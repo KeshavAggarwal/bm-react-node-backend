@@ -1,8 +1,8 @@
-import express from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import { Router as allRoutes } from './routes/index.js';
+import { Router as allRoutes } from './routes/index';
 
 dotenv.config();
 const app = express();
@@ -19,16 +19,20 @@ app.get('/', async (req, res) => {
   res.status(200).send('Welcome to the Marriage Biodata Maker!!');
 });
 
+interface ResponseError extends Error {
+  status?: number;
+}
+
 // catch 404 and forward to error handler
-app.use(function (req, res, next) {
+app.use(function (req: Request, res: Response, next: NextFunction) {
   console.log(req.url);
-  var err = new Error('Not Found');
+  var err = new Error('Not Found') as ResponseError;
   err.status = 404;
   next(err);
 });
 
 // error handler
-app.use(function (err, req, res, next) {
+app.use(function (err: any, req: Request, res: Response, next: NextFunction) {
   // render the error page
   res.status(err.status || 500);
   res.json({

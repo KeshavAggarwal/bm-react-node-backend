@@ -1,5 +1,7 @@
-import { Font, StyleSheet } from ('@react-pdf/renderer');
-import { BaseTemplate } from './baseTemplate.js';
+import React from 'react';
+import ReactPDF, { Font, StyleSheet } from '@react-pdf/renderer';
+import { ITemplateProps } from '../../types/templateTypes';
+import BaseTemplate from '../BaseTemplate';
 
 Font.register({
   family: 'Lora',
@@ -62,7 +64,7 @@ const STYLES = StyleSheet.create({
   valueText: {
     fontSize: 12,
     fontWeight: 500,
-    maxWidth: 260,
+    maxWidth: 300,
     color: '#36454F',
   },
   limitedValueText: {
@@ -91,16 +93,16 @@ const STYLES = StyleSheet.create({
   },
 });
 
-const Template12 = ({ isPreview }) => {
+const Template12 = (props: ITemplateProps) => {
+  const backgroundPath = props.isPreview
+    ? './images/template/wtm/template-bg-12-wtm.png'
+    : './images/template/template-bg-12.png';
+
   return (
-    <BaseTemplate
-      styles={STYLES}
-      backgroundPath="/images/template-bg-12.png"
-      isPreview={isPreview}
-    />
+    <BaseTemplate styles={STYLES} backgroundPath={backgroundPath} {...props} />
   );
 };
 
-// export default Template12;
-
-export { Template12 };
+export default async (data: ITemplateProps) => {
+  return await ReactPDF.renderToStream(<Template12 {...data} />);
+};

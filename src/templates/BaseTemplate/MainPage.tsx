@@ -1,13 +1,27 @@
+import React from 'react';
 import { Image, Page, Text, View } from '@react-pdf/renderer';
-import { getIsLimitedStyle, getLabel, getValue } from '../../utils';
+import {
+  getFormData,
+  getImage,
+  getIsLimitedStyle,
+  getLabel,
+  getValue,
+} from '../../utils';
+import { IBaseTemplateProps } from './types';
+
+const PREVIEW_FIELDS = 2;
+
 const MainPage = ({
   styles,
   backgroundPath,
   isPreview,
   imageVariant = 'default',
-  data = [],
-  profileImage,
-}) => {
+  formData,
+  imagePath,
+}: IBaseTemplateProps) => {
+  const data = getFormData(formData);
+  const profileImage = getImage(imagePath);
+
   const valueStyles = { ...styles.valueText };
   const limitedValueStyles = { ...valueStyles, ...styles.limitedValueText };
 
@@ -37,10 +51,11 @@ const MainPage = ({
               <View style={styles.sectionWrapper} wrap={false}>
                 <Text style={styles.sectionText}>{eachSection.key}</Text>
               </View>
-              {eachSection.data.map((eachData) => {
-                if (isPreview && renderedFields == 2) {
+              {eachSection.data.map((eachData, dataIdx) => {
+                if (isPreview && renderedFields == PREVIEW_FIELDS) {
                   return null;
                 }
+                // Now showing all data in demo as well
 
                 if (!eachData.value) {
                   return null;
@@ -50,24 +65,20 @@ const MainPage = ({
 
                 const label = getLabel(eachData);
 
+                const isLimited = getIsLimitedStyle({
+                  pageIndex: idx,
+                  dataIndex: dataIdx,
+                  isPreview,
+                  profileImage,
+                  isWithImage: imageVariant === 'default',
+                });
+
                 return (
                   <View key={label} style={styles.row} wrap={false}>
                     <Text style={styles.keyText}>{label}</Text>
                     <Text style={styles.separator}>:</Text>
-                    <Text
-                      style={
-                        getIsLimitedStyle({
-                          index: idx,
-                          pageNumber: 1,
-                          isPreview,
-                          profileImage,
-                          isWithImage: imageVariant === 'default',
-                        })
-                          ? limitedValueStyles
-                          : valueStyles
-                      }
-                    >
-                      {getValue(eachData)}
+                    <Text style={isLimited ? limitedValueStyles : valueStyles}>
+                      {getValue(eachData, false)}
                     </Text>
                   </View>
                 );
