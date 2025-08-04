@@ -5,6 +5,7 @@ import {
   getFrontDetails,
   getImage,
   getLabel,
+  getSectionIcon,
   getValue,
   PREVIEW_FIELDS,
 } from "../../../utils";

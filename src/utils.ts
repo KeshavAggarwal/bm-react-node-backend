@@ -147,4 +147,20 @@ export const containsDevanagari = (str: string | null) => {
   return devanagariRegex.test(str);
 };
 
+export const getSectionIcon = (sectionName: string) => {
+  switch (sectionName) {
+    case "Personal Details":
+      return "/images/resources/personal.png";
+
+    case "Family Details":
+      return "/images/resources/family.png";
+
+    case "Contact Details":
+      return "/images/resources/contact.png";
+
+    default:
+      return "/images/resources/family.png";
+  }
+};
+
 export const PREVIEW_FIELDS = 2;
