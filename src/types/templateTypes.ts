@@ -1,4 +1,4 @@
-import { IFieldData } from './formtypes';
+import { IFieldData } from "./formTypes";
 
 export type TemplateDataType = Array<{
   key: string;
@@ -7,26 +7,26 @@ export type TemplateDataType = Array<{
 
 export interface ITemplateListData {
   id:
-    | 'eg0'
-    | 'eg1'
-    | 'eg2'
-    | 'eg3'
-    | 'eg4'
-    | 'eg5'
-    | 'eg6'
-    | 'eg7'
-    | 'eg8'
-    | 'eg9'
-    | 'eg10'
-    | 'eg11'
-    | 'eg12'
-    | 'eg13'
-    | 'eg14'
-    | 'eg15'
-    | 'eg20'
-    | 'eg30'
-    | 'eg21'
-    | 'eg22';
+    | "eg0"
+    | "eg1"
+    | "eg2"
+    | "eg3"
+    | "eg4"
+    | "eg5"
+    | "eg6"
+    | "eg7"
+    | "eg8"
+    | "eg9"
+    | "eg10"
+    | "eg11"
+    | "eg12"
+    | "eg13"
+    | "eg14"
+    | "eg15"
+    | "eg20"
+    | "eg30"
+    | "eg21"
+    | "eg22";
   link: string;
   isPreviewable: boolean;
   price: number;

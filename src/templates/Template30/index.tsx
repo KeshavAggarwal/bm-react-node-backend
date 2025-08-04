@@ -1,8 +1,8 @@
 import React from "react";
 import ReactPDF, { Font, StyleSheet } from "@react-pdf/renderer";
 import { ITemplateProps } from "../../types/templateTypes";
-import BaseTemplate from "../BaseTemplate/DefaultBaseTemplate";
 import { containsDevanagari, getStringFormData } from "../../utils";
+import BaseTemplate from "../BaseTemplate/DefaultBaseTemplate";
 
 Font.register({
   family: "Lora",
@@ -61,7 +61,7 @@ const STYLES = StyleSheet.create({
     textTransform: "uppercase",
   },
   sectionGap: {
-    height: 26,
+    height: 24,
   },
   row: {
     display: "flex",
@@ -79,7 +79,7 @@ const STYLES = StyleSheet.create({
   valueText: {
     fontSize: 12,
     fontWeight: 500,
-    maxWidth: 300,
+    maxWidth: 340,
     color: "#36454F",
   },
   limitedValueText: {
@@ -108,7 +108,11 @@ const STYLES = StyleSheet.create({
   },
 });
 
-const Template12 = (props: ITemplateProps) => {
+const Template30 = (props: ITemplateProps) => {
+  const backgroundPath = props.isPreview
+    ? "/images/template/wtm/template-bg-30-wtm.png"
+    : "/images/template/template-bg-30.png";
+
   const templateStyles = { ...STYLES };
   const formData = getStringFormData(props.formData);
   const checkForDevnagri = containsDevanagari(formData);
@@ -121,15 +125,15 @@ const Template12 = (props: ITemplateProps) => {
     templateStyles["row"]["fontFamily"] = "Lora";
   }
 
-  const backgroundPath = props.isPreview
-    ? "./images/template/wtm/template-bg-12-wtm.png"
-    : "./images/template/template-bg-12.png";
-
   return (
-    <BaseTemplate styles={STYLES} backgroundPath={backgroundPath} {...props} />
+    <BaseTemplate
+      styles={templateStyles}
+      backgroundPath={backgroundPath}
+      {...props}
+    />
   );
 };
 
 export default async (data: ITemplateProps) => {
-  return await ReactPDF.renderToStream(<Template12 {...data} />);
+  return await ReactPDF.renderToStream(<Template30 {...data} />);
 };

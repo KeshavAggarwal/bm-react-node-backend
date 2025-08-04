@@ -1,22 +1,32 @@
-import express, { NextFunction, Request, Response } from 'express';
-import bodyParser from 'body-parser';
-import dotenv from 'dotenv';
-import cors from 'cors';
-import { Router as allRoutes } from './routes/index';
+import express, { NextFunction, Request, Response } from "express";
+import mongoose from "mongoose";
+import bodyParser from "body-parser";
+import dotenv from "dotenv";
+import cors from "cors";
+import { Router as allRoutes } from "./routes/index";
 
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT;
 
+// Connect to MongoDB (make sure you have MongnpmroDB running)
+mongoose.connect(
+  process.env.MONGODB_URI as string,
+  {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  } as mongoose.ConnectOptions
+);
+
 app.use(cors());
 // Middleware for parsing JSON requests
 app.use(bodyParser.json());
 
-app.use('/api', allRoutes);
+app.use("/api", allRoutes);
 
 // base get api
-app.get('/', async (req, res) => {
-  res.status(200).send('Welcome to the Marriage Biodata Maker!!');
+app.get("/", async (req, res) => {
+  res.status(200).send("Welcome to the Marriage Biodata Maker!!");
 });
 
 interface ResponseError extends Error {
@@ -26,7 +36,7 @@ interface ResponseError extends Error {
 // catch 404 and forward to error handler
 app.use(function (req: Request, res: Response, next: NextFunction) {
   console.log(req.url);
-  var err = new Error('Not Found') as ResponseError;
+  var err = new Error("Not Found") as ResponseError;
   err.status = 404;
   next(err);
 });

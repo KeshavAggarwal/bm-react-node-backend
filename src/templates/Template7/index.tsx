@@ -5,13 +5,13 @@ import BaseTemplate from "../BaseTemplate/DefaultBaseTemplate";
 import { containsDevanagari, getStringFormData } from "../../utils";
 
 Font.register({
-  family: "Lora",
+  family: "Kanit",
   fonts: [
     {
-      src: "https://fonts.gstatic.com/s/lora/v32/0QI6MX1D_JOuGQbT0gvTJPa787wsuyJGmKxemMeZ.ttf",
+      src: "https://fonts.gstatic.com/s/kanit/v12/nKKU-Go6G5tXcr5mOCWgX6BJNUJy.ttf",
     },
     {
-      src: "https://fonts.gstatic.com/s/lora/v32/0QI6MX1D_JOuGQbT0gvTJPa787z5vCJGmKxemMeZ.ttf",
+      src: "https://fonts.gstatic.com/s/kanit/v12/nKKU-Go6G5tXcr4uPiWgX6BJNUJy.ttf",
       fontWeight: "bold",
     },
   ],
@@ -40,7 +40,7 @@ const STYLES = StyleSheet.create({
   page: {
     display: "flex",
     flexDirection: "column",
-    padding: "134 40 126 44",
+    padding: "150 42 106 48",
   },
   borderImage: {
     position: "absolute",
@@ -52,34 +52,40 @@ const STYLES = StyleSheet.create({
   sectionRow: {
     position: "relative",
   },
-  sectionText: {
-    fontFamily: "Lora",
-    fontSize: 14,
-    color: "#994B03",
-    fontWeight: "bold",
+  sectionWrapper: {
+    backgroundColor: "#A8422A",
     marginBottom: 12,
+    padding: "6 12",
+    paddingBottom: 6,
+    maxWidth: 170,
+    borderRadius: 2,
+  },
+  sectionText: {
+    fontFamily: "Kanit",
+    fontSize: 14,
+    color: "#FFFFFF",
+    fontWeight: "bold",
     textTransform: "uppercase",
   },
   sectionGap: {
-    height: 26,
+    height: 20,
   },
   row: {
     display: "flex",
     flexDirection: "row",
     alignItems: "flex-start",
-    fontFamily: "Lora",
-    marginBottom: 7,
+    fontFamily: "Kanit",
+    marginBottom: 4,
   },
   keyText: {
     fontSize: 12,
-    width: 140,
-    color: "#100D0A",
-    fontWeight: 500,
+    width: 120,
+    color: "#A8422A",
   },
   valueText: {
     fontSize: 12,
     fontWeight: 500,
-    maxWidth: 300,
+    maxWidth: 340,
     color: "#36454F",
   },
   limitedValueText: {
@@ -88,7 +94,7 @@ const STYLES = StyleSheet.create({
   separator: {
     fontSize: 12,
     marginRight: 24,
-    color: "#100D0A",
+    color: "#36454F",
   },
   profile: {
     position: "absolute",
@@ -97,7 +103,7 @@ const STYLES = StyleSheet.create({
     width: 140,
     height: 200,
     objectFit: "cover",
-    border: "2 solid #994B03",
+    border: "2 solid #A8422A",
     borderRadius: 4,
   },
   profileImage: {
@@ -108,7 +114,11 @@ const STYLES = StyleSheet.create({
   },
 });
 
-const Template12 = (props: ITemplateProps) => {
+const Template7 = (props: ITemplateProps) => {
+  const backgroundPath = props.isPreview
+    ? "/images/template/wtm/template-bg-7-wtm.png"
+    : "/images/template/template-bg-7.png";
+
   const templateStyles = { ...STYLES };
   const formData = getStringFormData(props.formData);
   const checkForDevnagri = containsDevanagari(formData);
@@ -116,20 +126,22 @@ const Template12 = (props: ITemplateProps) => {
   if (checkForDevnagri) {
     templateStyles["sectionText"]["fontFamily"] = "Noto Sans Devanagari";
     templateStyles["row"]["fontFamily"] = "Noto Sans Devanagari";
+    templateStyles["sectionWrapper"]["paddingBottom"] = 2;
   } else {
-    templateStyles["sectionText"]["fontFamily"] = "Lora";
-    templateStyles["row"]["fontFamily"] = "Lora";
+    templateStyles["sectionText"]["fontFamily"] = "Kanit";
+    templateStyles["row"]["fontFamily"] = "Kanit";
+    templateStyles["sectionWrapper"]["paddingBottom"] = 6;
   }
 
-  const backgroundPath = props.isPreview
-    ? "./images/template/wtm/template-bg-12-wtm.png"
-    : "./images/template/template-bg-12.png";
-
   return (
-    <BaseTemplate styles={STYLES} backgroundPath={backgroundPath} {...props} />
+    <BaseTemplate
+      styles={templateStyles}
+      backgroundPath={backgroundPath}
+      {...props}
+    />
   );
 };
 
 export default async (data: ITemplateProps) => {
-  return await ReactPDF.renderToStream(<Template12 {...data} />);
+  return await ReactPDF.renderToStream(<Template7 {...data} />);
 };

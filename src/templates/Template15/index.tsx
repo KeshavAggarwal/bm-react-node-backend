@@ -40,7 +40,7 @@ const STYLES = StyleSheet.create({
   page: {
     display: "flex",
     flexDirection: "column",
-    padding: "134 40 126 44",
+    padding: "160 130 140 120",
   },
   borderImage: {
     position: "absolute",
@@ -55,13 +55,13 @@ const STYLES = StyleSheet.create({
   sectionText: {
     fontFamily: "Lora",
     fontSize: 14,
-    color: "#994B03",
+    color: "#62450e",
     fontWeight: "bold",
     marginBottom: 12,
     textTransform: "uppercase",
   },
   sectionGap: {
-    height: 26,
+    height: 20,
   },
   row: {
     display: "flex",
@@ -72,43 +72,46 @@ const STYLES = StyleSheet.create({
   },
   keyText: {
     fontSize: 12,
-    width: 140,
-    color: "#100D0A",
-    fontWeight: 500,
+    width: 110,
+    lineHeight: 1.5,
+    color: "#452b22",
   },
   valueText: {
     fontSize: 12,
     fontWeight: 500,
-    maxWidth: 300,
-    color: "#36454F",
+    maxWidth: 210,
+    lineHeight: 1.5,
+    color: "#452b22",
   },
   limitedValueText: {
-    maxWidth: 170,
+    maxWidth: 150,
   },
   separator: {
     fontSize: 12,
     marginRight: 24,
-    color: "#100D0A",
   },
   profile: {
     position: "absolute",
-    right: 10,
-    top: 30,
-    width: 140,
-    height: 200,
+    right: -20,
+    top: -60,
+    width: 85,
+    height: 85,
     objectFit: "cover",
-    border: "2 solid #994B03",
-    borderRadius: 4,
+    borderRadius: "50%",
   },
   profileImage: {
     width: "100%",
     height: "100%",
     objectFit: "cover",
-    borderRadius: 2,
+    borderRadius: "50%",
   },
 });
 
-const Template12 = (props: ITemplateProps) => {
+const Template15 = (props: ITemplateProps) => {
+  const backgroundPath = props.isPreview
+    ? "/images/template/wtm/template-bg-15-wtm.png"
+    : "/images/template/template-bg-15.png";
+
   const templateStyles = { ...STYLES };
   const formData = getStringFormData(props.formData);
   const checkForDevnagri = containsDevanagari(formData);
@@ -121,15 +124,16 @@ const Template12 = (props: ITemplateProps) => {
     templateStyles["row"]["fontFamily"] = "Lora";
   }
 
-  const backgroundPath = props.isPreview
-    ? "./images/template/wtm/template-bg-12-wtm.png"
-    : "./images/template/template-bg-12.png";
-
   return (
-    <BaseTemplate styles={STYLES} backgroundPath={backgroundPath} {...props} />
+    <BaseTemplate
+      styles={templateStyles}
+      backgroundPath={backgroundPath}
+      imageVariant="side-round"
+      {...props}
+    />
   );
 };
 
 export default async (data: ITemplateProps) => {
-  return await ReactPDF.renderToStream(<Template12 {...data} />);
+  return await ReactPDF.renderToStream(<Template15 {...data} />);
 };

@@ -1,19 +1,20 @@
-import { IFieldData, StateDataType } from './types/formtypes';
+import dayjs from "dayjs";
+import { IFieldData, StateDataType } from "./types/formTypes";
 
-const VOWELS = ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U'];
+const VOWELS = ["a", "e", "i", "o", "u", "A", "E", "I", "O", "U"];
 
 function maskVowels(inputString: string): string {
   // Use a regular expression to replace vowels with "*"
   const maskedString = inputString.replace(
-    new RegExp(`[${VOWELS.join('')}]`, 'g'),
-    '*'
+    new RegExp(`[${VOWELS.join("")}]`, "g"),
+    "*"
   );
 
   return maskedString;
 }
 
 export const decodeFormData = (fd: string) => {
-  const decodedFormData = Buffer.from(fd, 'base64').toString('utf-8');
+  const decodedFormData = Buffer.from(fd, "base64").toString("utf-8");
   return JSON.parse(decodedFormData);
 };
 
@@ -22,11 +23,11 @@ export const encodeFormData = (formData: Record<string, any>) => {
     return null;
   }
   const stringifiedData = JSON.stringify(formData);
-  return Buffer.from(stringifiedData).toString('base64');
+  return Buffer.from(stringifiedData).toString("base64");
 };
 
 export const getFormData = (formData: string | null) => {
-  const stringifiedData = formData || '[]';
+  const stringifiedData = getStringFormData(formData);
   const data: StateDataType = JSON.parse(stringifiedData) || [];
   return data;
 };
@@ -47,20 +48,18 @@ export const getValue = (fieldData: IFieldData, isMasked = false) => {
   let value = fieldData.value as any;
 
   switch (fieldData.fieldType) {
-    case 'time': {
+    case "time": {
       try {
-        // value = dayjs(value).format('hh:mm A');
-        value = 'TEMP';
+        value = dayjs(value).format("hh:mm A");
       } catch (error) {
         value = value;
       }
       return value;
     }
 
-    case 'date': {
+    case "date": {
       try {
-        // value = dayjs(value).format('DD/MM/YYYY');
-        value = 'TEMP';
+        value = dayjs(value).format("DD/MM/YYYY");
       } catch (error) {
         value = value;
       }
@@ -82,17 +81,17 @@ export const getValue = (fieldData: IFieldData, isMasked = false) => {
 };
 
 export const getFrontDetails = (formData: StateDataType) => {
-  let name = '';
-  let dob = '';
-  let placeOfBirth = '';
+  let name = "";
+  let dob = "";
+  let placeOfBirth = "";
 
   formData.forEach((eachSection) => {
     eachSection.data.forEach((eachField) => {
-      if (eachField.key === 'Name') {
+      if (eachField.key === "Name") {
         name = getValue(eachField);
-      } else if (eachField.key === 'Date Of Birth') {
+      } else if (eachField.key === "Date Of Birth") {
         dob = getValue(eachField);
-      } else if (eachField.key === 'Place Of Birth') {
+      } else if (eachField.key === "Place Of Birth") {
         placeOfBirth = getValue(eachField);
       }
     });
@@ -131,3 +130,21 @@ export const getIsLimitedStyle = ({
 
   return false;
 };
+
+export const getStringFormData = (formData: string | null) => {
+  if (formData) return formData;
+  if (typeof window === "undefined") return "[]";
+  return localStorage.getItem("form_data") || "[]";
+};
+
+export const containsDevanagari = (str: string | null) => {
+  if (!str) {
+    return false;
+  }
+
+  // Regular expression to match any Devanagari character
+  const devanagariRegex = /[\u0900-\u097F]/;
+  return devanagariRegex.test(str);
+};
+
+export const PREVIEW_FIELDS = 2;

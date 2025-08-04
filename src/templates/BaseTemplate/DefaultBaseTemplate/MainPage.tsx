@@ -1,13 +1,13 @@
-import React from 'react';
-import { Image, Page, Text, View } from '@react-pdf/renderer';
+import React from "react";
+import { Image, Page, Text, View } from "@react-pdf/renderer";
 import {
   getFormData,
   getImage,
   getIsLimitedStyle,
   getLabel,
   getValue,
-} from '../../utils';
-import { IBaseTemplateProps } from './types';
+} from "../../../utils";
+import { IBaseTemplateProps } from "../types";
 
 const PREVIEW_FIELDS = 2;
 
@@ -15,7 +15,7 @@ const MainPage = ({
   styles,
   backgroundPath,
   isPreview,
-  imageVariant = 'default',
+  imageVariant = "default",
   formData,
   imagePath,
 }: IBaseTemplateProps) => {
@@ -42,8 +42,8 @@ const MainPage = ({
             <View key={eachSection.key} style={styles.sectionRow}>
               {idx === 0 &&
                 profileImage !== null &&
-                (imageVariant === 'default' ||
-                  imageVariant === 'side-round') && (
+                (imageVariant === "default" ||
+                  imageVariant === "side-round") && (
                   <View style={styles.profile}>
                     <Image src={profileImage} style={styles.profileImage} />
                   </View>
@@ -70,7 +70,7 @@ const MainPage = ({
                   dataIndex: dataIdx,
                   isPreview,
                   profileImage,
-                  isWithImage: imageVariant === 'default',
+                  isWithImage: imageVariant === "default",
                 });
 
                 return (

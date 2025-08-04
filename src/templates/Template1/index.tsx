@@ -5,13 +5,13 @@ import BaseTemplate from "../BaseTemplate/DefaultBaseTemplate";
 import { containsDevanagari, getStringFormData } from "../../utils";
 
 Font.register({
-  family: "Lora",
+  family: "Inter",
   fonts: [
     {
-      src: "https://fonts.gstatic.com/s/lora/v32/0QI6MX1D_JOuGQbT0gvTJPa787wsuyJGmKxemMeZ.ttf",
+      src: "https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuI6fMZhrib2Bg-4.ttf",
     },
     {
-      src: "https://fonts.gstatic.com/s/lora/v32/0QI6MX1D_JOuGQbT0gvTJPa787z5vCJGmKxemMeZ.ttf",
+      src: "https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuFuYMZhrib2Bg-4.ttf",
       fontWeight: "bold",
     },
   ],
@@ -40,7 +40,7 @@ const STYLES = StyleSheet.create({
   page: {
     display: "flex",
     flexDirection: "column",
-    padding: "134 40 126 44",
+    padding: "100 60 100 60",
   },
   borderImage: {
     position: "absolute",
@@ -53,42 +53,40 @@ const STYLES = StyleSheet.create({
     position: "relative",
   },
   sectionText: {
-    fontFamily: "Lora",
+    fontFamily: "Inter",
     fontSize: 14,
-    color: "#994B03",
+    color: "#B4A363",
     fontWeight: "bold",
     marginBottom: 12,
     textTransform: "uppercase",
   },
   sectionGap: {
-    height: 26,
+    height: 20,
   },
   row: {
     display: "flex",
     flexDirection: "row",
     alignItems: "flex-start",
-    fontFamily: "Lora",
+    fontFamily: "Inter",
     marginBottom: 7,
   },
   keyText: {
     fontSize: 12,
     width: 140,
     color: "#100D0A",
-    fontWeight: 500,
   },
   valueText: {
     fontSize: 12,
     fontWeight: 500,
-    maxWidth: 300,
-    color: "#36454F",
+    maxWidth: 310,
+    color: "#100D0A",
   },
   limitedValueText: {
-    maxWidth: 170,
+    maxWidth: 150,
   },
   separator: {
     fontSize: 12,
     marginRight: 24,
-    color: "#100D0A",
   },
   profile: {
     position: "absolute",
@@ -97,7 +95,7 @@ const STYLES = StyleSheet.create({
     width: 140,
     height: 200,
     objectFit: "cover",
-    border: "2 solid #994B03",
+    border: "2 solid #B4A363",
     borderRadius: 4,
   },
   profileImage: {
@@ -108,7 +106,11 @@ const STYLES = StyleSheet.create({
   },
 });
 
-const Template12 = (props: ITemplateProps) => {
+const Template1 = (props: ITemplateProps) => {
+  const backgroundPath = props.isPreview
+    ? "/images/template/wtm/template-bg-1-wtm.png"
+    : "/images/template/template-bg-1.png";
+
   const templateStyles = { ...STYLES };
   const formData = getStringFormData(props.formData);
   const checkForDevnagri = containsDevanagari(formData);
@@ -117,19 +119,19 @@ const Template12 = (props: ITemplateProps) => {
     templateStyles["sectionText"]["fontFamily"] = "Noto Sans Devanagari";
     templateStyles["row"]["fontFamily"] = "Noto Sans Devanagari";
   } else {
-    templateStyles["sectionText"]["fontFamily"] = "Lora";
-    templateStyles["row"]["fontFamily"] = "Lora";
+    templateStyles["sectionText"]["fontFamily"] = "Inter";
+    templateStyles["row"]["fontFamily"] = "Inter";
   }
 
-  const backgroundPath = props.isPreview
-    ? "./images/template/wtm/template-bg-12-wtm.png"
-    : "./images/template/template-bg-12.png";
-
   return (
-    <BaseTemplate styles={STYLES} backgroundPath={backgroundPath} {...props} />
+    <BaseTemplate
+      styles={templateStyles}
+      backgroundPath={backgroundPath}
+      {...props}
+    />
   );
 };
 
 export default async (data: ITemplateProps) => {
-  return await ReactPDF.renderToStream(<Template12 {...data} />);
+  return await ReactPDF.renderToStream(<Template1 {...data} />);
 };

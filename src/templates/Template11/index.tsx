@@ -40,7 +40,7 @@ const STYLES = StyleSheet.create({
   page: {
     display: "flex",
     flexDirection: "column",
-    padding: "134 40 126 44",
+    padding: "100 30 108 32",
   },
   borderImage: {
     position: "absolute",
@@ -55,7 +55,7 @@ const STYLES = StyleSheet.create({
   sectionText: {
     fontFamily: "Lora",
     fontSize: 14,
-    color: "#994B03",
+    color: "#6D0031",
     fontWeight: "bold",
     marginBottom: 12,
     textTransform: "uppercase",
@@ -79,7 +79,7 @@ const STYLES = StyleSheet.create({
   valueText: {
     fontSize: 12,
     fontWeight: 500,
-    maxWidth: 300,
+    maxWidth: 340,
     color: "#36454F",
   },
   limitedValueText: {
@@ -97,7 +97,7 @@ const STYLES = StyleSheet.create({
     width: 140,
     height: 200,
     objectFit: "cover",
-    border: "2 solid #994B03",
+    border: "2 solid #6D0031",
     borderRadius: 4,
   },
   profileImage: {
@@ -108,7 +108,11 @@ const STYLES = StyleSheet.create({
   },
 });
 
-const Template12 = (props: ITemplateProps) => {
+const Template11 = (props: ITemplateProps) => {
+  const backgroundPath = props.isPreview
+    ? "/images/template/wtm/template-bg-11-wtm.png"
+    : "/images/template/template-bg-11.png";
+
   const templateStyles = { ...STYLES };
   const formData = getStringFormData(props.formData);
   const checkForDevnagri = containsDevanagari(formData);
@@ -121,15 +125,15 @@ const Template12 = (props: ITemplateProps) => {
     templateStyles["row"]["fontFamily"] = "Lora";
   }
 
-  const backgroundPath = props.isPreview
-    ? "./images/template/wtm/template-bg-12-wtm.png"
-    : "./images/template/template-bg-12.png";
-
   return (
-    <BaseTemplate styles={STYLES} backgroundPath={backgroundPath} {...props} />
+    <BaseTemplate
+      styles={templateStyles}
+      backgroundPath={backgroundPath}
+      {...props}
+    />
   );
 };
 
 export default async (data: ITemplateProps) => {
-  return await ReactPDF.renderToStream(<Template12 {...data} />);
+  return await ReactPDF.renderToStream(<Template11 {...data} />);
 };
