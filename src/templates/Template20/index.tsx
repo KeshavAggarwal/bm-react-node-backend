@@ -164,8 +164,12 @@ const Template20 = (props: ITemplateProps) => {
   const frontDetails = getFrontDetails(data);
 
   const backgroundPath = props.isPreview
-    ? "/images/template/wtm/template-2-pager-wtm.png"
-    : "/images/template/template-bg-20/front-page.png";
+    ? "./images/template/wtm/template-2-pager-wtm.png"
+    : "./images/template/template-bg-20/front-page.png";
+
+    const restBackgroundPath = props.isPreview
+    ? "./images/template/wtm/template-2-pager-20-rest-pages-wtm.png"
+    : "./images/template/template-bg-20/rest-pages.png";
 
   const templateStyles = { ...STYLES };
   const formData = getStringFormData(props.formData);
@@ -213,7 +217,7 @@ const Template20 = (props: ITemplateProps) => {
 
       <MainPage
         styles={templateStyles}
-        backgroundPath="/images/template/template-bg-20/rest-pages.png"
+        backgroundPath={restBackgroundPath}
         imageVariant="front-round"
         {...props}
       />

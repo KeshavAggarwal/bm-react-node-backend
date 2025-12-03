@@ -2,10 +2,11 @@ import express, { Request, Response } from "express";
 import { BaseResponse, TemplateListItem } from "../types/response";
 import ConfigManager from "../models/configManager";
 import { ITemplateProps } from "../types/templateTypes";
+import { authenticateFirebase, AuthenticatedRequest } from "../middleware/authMiddleware";
 
 const Router = express.Router();
 
-Router.post("/preview", async (req: Request, res: Response) => {
+Router.post("/preview", authenticateFirebase, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { fd, image_path } = req.body;
 
@@ -29,7 +30,7 @@ Router.post("/preview", async (req: Request, res: Response) => {
   }
 });
 
-Router.get("/list", async (req: Request, res: Response) => {
+Router.get("/list", authenticateFirebase, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const currency = (req.query.currency as string) || "INR";
 
@@ -185,7 +186,7 @@ Router.get("/list", async (req: Request, res: Response) => {
       {
         id: "eg4",
         imageUrl:
-          "https://res.cloudinary.com/drmmw7mn8/image/upload/v1753823901/brown-background-marriage-biodata-format_waybyz.webp",
+          "https://res.cloudinary.com/drmmw7mn8/image/upload/v1753823900/brown-theme-marriage-biodata-format_grywax.webp",
         price: p1,
         imageOnly: false,
       },
@@ -199,7 +200,7 @@ Router.get("/list", async (req: Request, res: Response) => {
       {
         id: "eg8",
         imageUrl:
-          "https://res.cloudinary.com/drmmw7mn8/image/upload/v1753823900/brown-theme-marriage-biodata-format_grywax.webp",
+          "https://res.cloudinary.com/drmmw7mn8/image/upload/v1753823901/brown-background-marriage-biodata-format_waybyz.webp",
         price: p1,
         imageOnly: false,
       },

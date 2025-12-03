@@ -110,8 +110,8 @@ const STYLES = StyleSheet.create({
 
 const Template11 = (props: ITemplateProps) => {
   const backgroundPath = props.isPreview
-    ? "/images/template/wtm/template-bg-11-wtm.png"
-    : "/images/template/template-bg-11.png";
+    ? "./images/template/wtm/template-bg-11-wtm.png"
+    : "./images/template/template-bg-11.png";
 
   const templateStyles = { ...STYLES };
   const formData = getStringFormData(props.formData);

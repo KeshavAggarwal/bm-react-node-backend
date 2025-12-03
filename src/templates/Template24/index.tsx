@@ -214,8 +214,8 @@ const Template24 = (props: ITemplateProps) => {
   }
 
   const backgroundPath = props.isPreview
-    ? "/images/template/template-bg-24.png"
-    : "/images/template/template-bg-24.png";
+    ? "./images/template/wtm/template-bg-24-wtm.png"
+    : "./images/template/template-bg-24.png";
 
   return (
     <CenterBaseTemplate

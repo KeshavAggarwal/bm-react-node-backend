@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 import { IFieldData, StateDataType } from "./types/formTypes";
+import { TemplateListItem } from "./types/response";
 
 const VOWELS = ["a", "e", "i", "o", "u", "A", "E", "I", "O", "U"];
 
@@ -150,17 +151,73 @@ export const containsDevanagari = (str: string | null) => {
 export const getSectionIcon = (sectionName: string) => {
   switch (sectionName) {
     case "Personal Details":
-      return "/images/resources/personal.png";
+      return "./images/resources/personal.png";
 
     case "Family Details":
-      return "/images/resources/family.png";
+      return "./images/resources/family.png";
 
     case "Contact Details":
-      return "/images/resources/contact.png";
+      return "./images/resources/contact.png";
 
     default:
-      return "/images/resources/family.png";
+      return "./images/resources/family.png";
   }
 };
 
-export const PREVIEW_FIELDS = 2;
+// Valid template IDs based on available templates
+const VALID_TEMPLATE_IDS = new Set([
+  "eg0",
+  "eg1",
+  "eg2",
+  "eg3",
+  "eg4",
+  "eg5",
+  "eg6",
+  "eg7",
+  "eg8",
+  "eg9",
+  "eg10",
+  "eg11",
+  "eg12",
+  "eg13",
+  "eg14",
+  "eg15",
+  "eg20",
+  "eg21",
+  "eg22",
+  "eg23",
+  "eg24",
+  "eg25",
+  "eg26",
+  "eg30",
+]);
+
+export const isValidTemplateId = (templateId: string): boolean => {
+  return VALID_TEMPLATE_IDS.has(templateId);
+};
+
+export const loadTemplate = async (templateId: string) => {
+  if (!isValidTemplateId(templateId)) {
+    throw new Error(`Invalid template_id: ${templateId}`);
+  }
+
+  const templateNumber = templateId.replace("eg", "");
+  const templateModule = await import(`./templates/Template${templateNumber}`);
+  return templateModule.default;
+};
+
+export const getPreviewFields = (sectionName: string) => {
+  switch (sectionName) {
+    case "Personal Details":
+      return 15;
+
+    case "Family Details":
+      return 5;
+
+    case "Contact Details":
+      return 5;
+
+    default:
+      return 2;
+  }
+};

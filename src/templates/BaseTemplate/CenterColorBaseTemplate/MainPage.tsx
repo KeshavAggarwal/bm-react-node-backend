@@ -1,17 +1,18 @@
 import React from "react";
-import { Image, Page, Text, View } from "@react-pdf/renderer";
+import { Font, Image, Page, Text, View } from "@react-pdf/renderer";
 import {
   getFormData,
   getFrontDetails,
   getImage,
   getLabel,
+  getPreviewFields,
   getSectionIcon,
   getValue,
-  PREVIEW_FIELDS,
 } from "../../../utils";
 import { IBaseTemplateProps } from "../types";
+Font.registerHyphenationCallback((word) => [word]);
 
-const EXCLUDE_LABELS = ["Name"];
+const EXCLUDE_LABELS = ["Name", "Date Of Birth", "Place Of Birth"];
 
 const MainPage = ({
   styles,
@@ -66,6 +67,7 @@ const MainPage = ({
           }
           let renderedFields = 0;
           const sectionIconSrc = getSectionIcon(eachSection.key);
+          const previewfields = getPreviewFields(eachSection.key);
 
           return (
             <View key={eachSection.key} style={styles.sectionRow}>
@@ -76,7 +78,7 @@ const MainPage = ({
                 </View>
               </View>
               {eachSection.data.map((eachData, dataIdx) => {
-                if (isPreview && renderedFields == PREVIEW_FIELDS) {
+                if (isPreview && renderedFields == previewfields) {
                   return null;
                 }
 

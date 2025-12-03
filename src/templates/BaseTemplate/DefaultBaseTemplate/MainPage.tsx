@@ -1,15 +1,16 @@
 import React from "react";
-import { Image, Page, Text, View } from "@react-pdf/renderer";
+import { Font,Image, Page, Text, View } from "@react-pdf/renderer";
 import {
   getFormData,
   getImage,
   getIsLimitedStyle,
   getLabel,
+  getPreviewFields,
   getValue,
 } from "../../../utils";
 import { IBaseTemplateProps } from "../types";
+Font.registerHyphenationCallback((word) => [word]);
 
-const PREVIEW_FIELDS = 2;
 
 const MainPage = ({
   styles,
@@ -37,6 +38,7 @@ const MainPage = ({
             return null;
           }
           let renderedFields = 0;
+          const previewfields = getPreviewFields(eachSection.key);
 
           return (
             <View key={eachSection.key} style={styles.sectionRow}>
@@ -52,10 +54,9 @@ const MainPage = ({
                 <Text style={styles.sectionText}>{eachSection.key}</Text>
               </View>
               {eachSection.data.map((eachData, dataIdx) => {
-                if (isPreview && renderedFields == PREVIEW_FIELDS) {
+                if (isPreview && renderedFields == previewfields) {
                   return null;
                 }
-                // Now showing all data in demo as well
 
                 if (!eachData.value) {
                   return null;

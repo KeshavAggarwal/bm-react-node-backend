@@ -1,11 +1,13 @@
+import dotenv from "dotenv";
+
+// Load environment variables FIRST before any other imports
+dotenv.config();
+
 import express, { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
 import bodyParser from "body-parser";
-import dotenv from "dotenv";
 import cors from "cors";
 import { Router as allRoutes } from "./routes/index";
-
-dotenv.config();
 const app = express();
 const PORT = process.env.PORT;
 
