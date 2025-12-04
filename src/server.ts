@@ -28,7 +28,7 @@ app.use("/api", allRoutes);
 
 // base get api
 app.get("/", async (req, res) => {
-  res.status(200).send("Welcome to the Marriage Biodata Maker!!");
+  res.status(200).send("Welcome to the space, what are you looking for here?");
 });
 
 interface ResponseError extends Error {
