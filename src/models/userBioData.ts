@@ -39,14 +39,6 @@ export interface IUserBioData extends Document {
   parent_transaction_id: string | null;
   user_id: string; // Firebase UID
   channel: "ANDROID" | "IOS" | "WEB";
-  revenuecat_transaction_id: string | null;
-  revenuecat_app_user_id: string | null;
-  revenuecat_product_id: string | null;
-  revenuecat_webhook_received_at: Date | null;
-  revenuecat_webhook_event_type: string | null;
-  revenuecat_webhook_payload: Record<string, any> | null;
-  pdf_generated: boolean;
-  pdf_generated_at: Date | null;
 }
 
 const userBioDataSchema = new Schema<IUserBioData>({
@@ -183,47 +175,6 @@ const userBioDataSchema = new Schema<IUserBioData>({
     type: String,
     required: false,
     default: "WEB",
-  },
-  revenuecat_transaction_id: {
-    type: String,
-    required: false,
-    default: null,
-    index: true, // For quick lookup by transaction ID
-  },
-  revenuecat_app_user_id: {
-    type: String,
-    required: false,
-    default: null,
-  },
-  revenuecat_product_id: {
-    type: String,
-    required: false,
-    default: null,
-  },
-  revenuecat_webhook_received_at: {
-    type: Date,
-    required: false,
-    default: null,
-  },
-  revenuecat_webhook_event_type: {
-    type: String,
-    required: false,
-    default: null,
-  },
-  revenuecat_webhook_payload: {
-    type: Object,
-    required: false,
-    default: null,
-  },
-  pdf_generated: {
-    type: Boolean,
-    required: false,
-    default: false,
-  },
-  pdf_generated_at: {
-    type: Date,
-    required: false,
-    default: null,
   },
 });
 

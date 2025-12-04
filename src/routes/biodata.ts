@@ -6,26 +6,69 @@ import { loadTemplate } from "../utils";
 import { ITemplateProps } from "../types/templateTypes";
 import mongoose from "mongoose";
 
+// RevenueCat configuration
+const REVENUECAT_API_KEY = process.env.REVENUECAT_API_KEY;
+const REVENUECAT_PROJECT_ID = process.env.REVENUECAT_PROJECT_ID;
+
+// Function to verify purchase with RevenueCat
+async function verifyRevenueCatPurchase(transactionId: string): Promise<{
+  verified: boolean;
+  data: any;
+  error: string | null;
+}> {
+  if (!REVENUECAT_API_KEY || !REVENUECAT_PROJECT_ID) {
+    return { verified: false, data: null, error: "RevenueCat configuration is missing" };
+  }
+
+  try {
+    const url = `https://api.revenuecat.com/v2/projects/${REVENUECAT_PROJECT_ID}/purchases?store_purchase_identifier=${encodeURIComponent(transactionId)}`;
+    
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${REVENUECAT_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("RevenueCat API error:", response.status, errorText);
+      return { verified: false, data: null, error: `RevenueCat API error: ${response.status}` };
+    }
+
+    const data = await response.json();
+    
+    // Verify that the transaction ID exists in the response
+    if (!data.items || !Array.isArray(data.items) || data.items.length === 0) {
+      return { verified: false, data: null, error: "No purchases found for this transaction ID" };
+    }
+    
+    // Check if any purchase matches the transaction ID
+    const matchedPurchase = data.items.find(
+      (item: any) => 
+        item.id === transactionId || 
+        String(item.store_purchase_identifier) === transactionId
+    );
+    
+    if (!matchedPurchase) {
+      return { verified: false, data: null, error: "Transaction ID does not match any purchase in the response" };
+    }
+    
+    return { verified: true, data, error: null };
+  } catch (error: any) {
+    console.error("Error verifying RevenueCat purchase:", error);
+    return { verified: false, data: null, error: error.message || "Unknown error" };
+  }
+}
+
 const Router = express.Router();
 
 // Valid channels
 const VALID_CHANNELS = ["ANDROID", "IOS", "WEB"] as const;
 type Channel = typeof VALID_CHANNELS[number];
 
-/**
- * POST /biodata/create
- * 
- * Create a new biodata entry (before payment)
- * 
- * Flow:
- * 1. User fills form on Android
- * 2. Call this API to save form data
- * 3. Receive biodata ID
- * 4. Pass "userId_biodataId" as app_user_id to RevenueCat
- * 5. RevenueCat webhook will update payment status
- * 6. Poll /biodata/:id/status until payment_status === "PAYMENT_SUCCESS"
- * 7. Download PDF via /biodata/:id/download
- */
+// POST /biodata/create - Create a new biodata entry
 Router.post("/create", authenticateFirebase, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.uid;
@@ -86,8 +129,6 @@ Router.post("/create", authenticateFirebase, async (req: AuthenticatedRequest, r
     // Stringify fd
     const stringifiedFormData = JSON.stringify(fd);
 
-    console.log(`📝 Creating biodata for user: ${userId}`);
-
     // Create new biodata entry
     const newBiodata = new UserBioData({
       user_id: userId,
@@ -100,23 +141,10 @@ Router.post("/create", authenticateFirebase, async (req: AuthenticatedRequest, r
     });
 
     const savedBiodata = await newBiodata.save();
-    const biodataId = savedBiodata._id.toString();
 
-    console.log(`✅ Biodata created: ${biodataId}`);
-
-    // Return biodata ID and app_user_id for RevenueCat
-    // Android should pass this as app_user_id when initiating purchase
-    const appUserId = `${userId}_${biodataId}`;
-
-    const response: BaseResponse<{ 
-      id: string;
-      app_user_id: string;
-    }> = {
+    const response: BaseResponse<{ id: string }> = {
       status: true,
-      data: { 
-        id: biodataId,
-        app_user_id: appUserId, // Use this for RevenueCat purchase
-      },
+      data: { id: savedBiodata._id.toString() },
       error: null,
     };
     res.status(201).json(response);
@@ -127,6 +155,148 @@ Router.post("/create", authenticateFirebase, async (req: AuthenticatedRequest, r
       data: null,
       error: {
         message: `Failed to create biodata: ${error.message}`,
+        code: 500,
+      },
+    };
+    res.status(500).json(response);
+  }
+});
+
+// POST /biodata/update-payment - Update payment status and generate PDF
+Router.post("/update-payment", authenticateFirebase, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user?.uid;
+
+    const { id, transactionId, productId } = req.body;
+
+    if (!userId) {
+      const response: BaseResponse<null> = {
+        status: false,
+        data: null,
+        error: {
+          message: "User ID not found in token",
+          code: 400,
+        },
+      };
+      return res.status(400).json(response);
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      const response: BaseResponse<null> = {
+        status: false,
+        data: null,
+        error: {
+          message: "Invalid id format",
+          code: 400,
+        },
+      };
+      return res.status(400).json(response);
+    }
+
+    // Validate transaction_id
+    if (!transactionId) {
+      const response: BaseResponse<null> = {
+        status: false,
+        data: null,
+        error: {
+          message: "Transaction ID is required",
+          code: 400,
+        },
+      };
+      return res.status(400).json(response);
+    }
+
+    // Find the biodata entry that belongs to the user
+    const biodata = await UserBioData.findOne({
+      _id: id,
+      user_id: userId,
+    });
+
+    if (!biodata) {
+      const response: BaseResponse<null> = {
+        status: false,
+        data: null,
+        error: {
+          message: "Biodata not found or you don't have access to it",
+          code: 404,
+        },
+      };
+      return res.status(404).json(response);
+    }
+
+    // Verify template_id matches product identifier
+    if (productId && biodata.template_id !== productId) {
+      const response: BaseResponse<null> = {
+        status: false,
+        data: null,
+        error: {
+          message: "Product ID does not match the template ID",
+          code: 400,
+        },
+      };
+      return res.status(400).json(response);
+    }
+
+    // Verify purchase with RevenueCat using transaction_id as store_purchase_identifier
+    const verificationResult = await verifyRevenueCatPurchase(transactionId);
+
+    if (!verificationResult.verified) {
+      const response: BaseResponse<null> = {
+        status: false,
+        data: null,
+        error: {
+          message: verificationResult.error || "Purchase verification failed",
+          code: 400,
+        },
+      };
+      return res.status(400).json(response);
+    }
+
+    // Update payment status and dump the entire RevenueCat response
+    biodata.payment_status = "PAYMENT_SUCCESS";
+    biodata.pg_response = { transaction_id: transactionId, revenuecat_response: verificationResult.data };
+    biodata.pg_response_credt = new Date();
+    biodata.pgType = "REVENUECAT";
+    await biodata.save();
+
+    // Generate PDF
+    const template = await loadTemplate(biodata.template_id);
+
+    const formdata: ITemplateProps = {
+      formData: biodata.form_data as unknown as string,
+      isPreview: false,
+      imagePath: biodata.image_path,
+    };
+
+    const pdfStream = await template(formdata);
+
+    // Setting up the response headers
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename=biodata-${id}.pdf`);
+
+    // Stream the PDF back to the user
+    pdfStream.pipe(res);
+  } catch (error: any) {
+    console.error("Error updating payment and generating PDF:", error);
+
+    // Handle invalid template ID errors
+    if (error.message && error.message.includes("Invalid template_id")) {
+      const response: BaseResponse<null> = {
+        status: false,
+        data: null,
+        error: {
+          message: error.message,
+          code: 400,
+        },
+      };
+      return res.status(400).json(response);
+    }
+
+    const response: BaseResponse<null> = {
+      status: false,
+      data: null,
+      error: {
+        message: `Failed to update payment: ${error.message}`,
         code: 500,
       },
     };
@@ -171,223 +341,6 @@ Router.get("/", authenticateFirebase, async (req: AuthenticatedRequest, res: Res
       data: null,
       error: {
         message: `Failed to fetch biodata: ${error.message}`,
-        code: 500,
-      },
-    };
-    res.status(500).json(response);
-  }
-});
-
-/**
- * GET /biodata/:id/status
- * 
- * Poll payment status for a biodata entry
- * Used by Android app to check if payment webhook has been received
- * 
- * Returns:
- * - payment_status: Current payment status
- * - pdf_ready: Boolean indicating if PDF can be downloaded
- */
-Router.get("/:id/status", authenticateFirebase, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const userId = req.user?.uid;
-    const biodataId = req.params.id;
-
-    if (!userId) {
-      const response: BaseResponse<null> = {
-        status: false,
-        data: null,
-        error: {
-          message: "User ID not found in token",
-          code: 400,
-        },
-      };
-      return res.status(400).json(response);
-    }
-
-    // Validate MongoDB ObjectId format
-    if (!mongoose.Types.ObjectId.isValid(biodataId)) {
-      const response: BaseResponse<null> = {
-        status: false,
-        data: null,
-        error: {
-          message: "Invalid biodata ID format",
-          code: 400,
-        },
-      };
-      return res.status(400).json(response);
-    }
-
-    // Find biodata and verify ownership
-    const biodata = await UserBioData.findOne({
-      _id: biodataId,
-      user_id: userId,
-    }).select("payment_status pdf_generated created_on revenuecat_transaction_id");
-
-    if (!biodata) {
-      const response: BaseResponse<null> = {
-        status: false,
-        data: null,
-        error: {
-          message: "Biodata not found or you don't have access to it",
-          code: 404,
-        },
-      };
-      return res.status(404).json(response);
-    }
-
-    // Return status information
-    const response: BaseResponse<{
-      payment_status: string;
-      pdf_ready: boolean;
-      transaction_id: string | null;
-    }> = {
-      status: true,
-      data: {
-        payment_status: biodata.payment_status,
-        pdf_ready: biodata.payment_status === "PAYMENT_SUCCESS",
-        transaction_id: biodata.revenuecat_transaction_id,
-      },
-      error: null,
-    };
-
-    res.json(response);
-  } catch (error: any) {
-    console.error("Error checking payment status:", error);
-    const response: BaseResponse<null> = {
-      status: false,
-      data: null,
-      error: {
-        message: `Failed to check status: ${error.message}`,
-        code: 500,
-      },
-    };
-    res.status(500).json(response);
-  }
-});
-
-/**
- * GET /biodata/:id/download
- * 
- * Download PDF for a paid biodata entry
- * Only works if payment_status is PAYMENT_SUCCESS
- * 
- * Security checks:
- * - User must be authenticated
- * - Biodata must belong to authenticated user
- * - Payment must be completed
- */
-Router.get("/:id/download", authenticateFirebase, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const userId = req.user?.uid;
-    const biodataId = req.params.id;
-
-    if (!userId) {
-      const response: BaseResponse<null> = {
-        status: false,
-        data: null,
-        error: {
-          message: "User ID not found in token",
-          code: 400,
-        },
-      };
-      return res.status(400).json(response);
-    }
-
-    // Validate MongoDB ObjectId format
-    if (!mongoose.Types.ObjectId.isValid(biodataId)) {
-      const response: BaseResponse<null> = {
-        status: false,
-        data: null,
-        error: {
-          message: "Invalid biodata ID format",
-          code: 400,
-        },
-      };
-      return res.status(400).json(response);
-    }
-
-    // Find biodata and verify ownership
-    const biodata = await UserBioData.findOne({
-      _id: biodataId,
-      user_id: userId,
-    });
-
-    if (!biodata) {
-      const response: BaseResponse<null> = {
-        status: false,
-        data: null,
-        error: {
-          message: "Biodata not found or you don't have access to it",
-          code: 404,
-        },
-      };
-      return res.status(404).json(response);
-    }
-
-    // CRITICAL: Check if payment is successful
-    if (biodata.payment_status !== "PAYMENT_SUCCESS") {
-      const response: BaseResponse<null> = {
-        status: false,
-        data: null,
-        error: {
-          message: "Payment not completed. Cannot download PDF.",
-          code: 403,
-        },
-      };
-      return res.status(403).json(response);
-    }
-
-    console.log(`🎯 Generating PDF for biodata: ${biodataId}`);
-
-    // Generate PDF
-    const template = await loadTemplate(biodata.template_id);
-
-    const formdata: ITemplateProps = {
-      formData: biodata.form_data as unknown as string,
-      isPreview: false,
-      imagePath: biodata.image_path,
-    };
-
-    const pdfStream = await template(formdata);
-
-    // Mark PDF as generated (for analytics)
-    if (!biodata.pdf_generated) {
-      biodata.pdf_generated = true;
-      biodata.pdf_generated_at = new Date();
-      await biodata.save();
-    }
-
-    // Set response headers for PDF download
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename=biodata-${biodataId}.pdf`);
-
-    // Stream the PDF back to the client
-    pdfStream.pipe(res);
-
-    console.log(`✅ PDF generated successfully for biodata: ${biodataId}`);
-
-  } catch (error: any) {
-    console.error("Error generating PDF:", error);
-
-    // Handle invalid template ID errors
-    if (error.message && error.message.includes("Invalid template_id")) {
-      const response: BaseResponse<null> = {
-        status: false,
-        data: null,
-        error: {
-          message: error.message,
-          code: 400,
-        },
-      };
-      return res.status(400).json(response);
-    }
-
-    const response: BaseResponse<null> = {
-      status: false,
-      data: null,
-      error: {
-        message: `Failed to generate PDF: ${error.message}`,
         code: 500,
       },
     };
