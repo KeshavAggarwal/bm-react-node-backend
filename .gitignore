@@ -3,6 +3,9 @@
 build/
 .next/
 
+# Firebase sensitive credentials
+firebase-service-account.json
+
 # Elastic Beanstalk Files
 .elasticbeanstalk/*
 !.elasticbeanstalk/*.cfg.yml
