@@ -34,7 +34,7 @@ async function verifyRevenueCatPurchase(transactionId: string): Promise<{
     if (!response.ok) {
       const errorText = await response.text();
       console.error("RevenueCat API error:", response.status, errorText);
-      return { verified: false, data: null, error: `RevenueCat API error: ${response.status}` };
+      return { verified: false, data: null, error: `Payment verification failed. Please try again later.` };
     }
 
     const data = await response.json();
@@ -57,8 +57,8 @@ async function verifyRevenueCatPurchase(transactionId: string): Promise<{
     
     return { verified: true, data, error: null };
   } catch (error: any) {
-    console.error("Error verifying RevenueCat purchase:", error);
-    return { verified: false, data: null, error: error.message || "Unknown error" };
+    console.error("Error verifying purchase:", error);
+    return { verified: false, data: null, error: "Error verifying purchase" };
   }
 }
 
@@ -320,10 +320,18 @@ Router.get("/", authenticateFirebase, async (req: AuthenticatedRequest, res: Res
     }
 
     // Query MongoDB for user's biodata - only select specific fields
-    const biodataList = await UserBioData.find({ user_id: userId })
+    const biodataListRaw = await UserBioData.find({ user_id: userId })
       .select('form_data template_id image_path created_on')
       .sort({ created_on: -1 }) // Sort by newest first
       .lean();
+
+    const biodataList = biodataListRaw.map(item => ({
+      id: item._id.toString(),
+      form_data: item.form_data,
+      template_id: item.template_id,
+      image_path: item.image_path,
+      created_on: item.created_on,
+    }));
 
     const response: BaseResponse<typeof biodataList> = {
       status: true,
