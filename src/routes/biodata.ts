@@ -126,14 +126,11 @@ Router.post("/create", authenticateFirebase, async (req: AuthenticatedRequest, r
       return res.status(400).json(response);
     }
 
-    // Stringify fd
-    const stringifiedFormData = JSON.stringify(fd);
-
     // Create new biodata entry
     const newBiodata = new UserBioData({
       user_id: userId,
       template_id: tId,
-      form_data: stringifiedFormData,
+      form_data: fd,
       image_path: imagePath || null,
       channel: channel as Channel,
       amount,
