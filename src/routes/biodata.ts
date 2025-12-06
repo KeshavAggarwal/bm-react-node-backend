@@ -22,6 +22,7 @@ async function verifyRevenueCatPurchase(transactionId: string): Promise<{
 
   try {
     const url = `https://api.revenuecat.com/v2/projects/${REVENUECAT_PROJECT_ID}/purchases?store_purchase_identifier=${encodeURIComponent(transactionId)}`;
+    console.log("transaction id: ", transactionId);
     
     const response = await fetch(url, {
       method: "GET",

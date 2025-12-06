@@ -3,6 +3,7 @@ module.exports = {
     {
       name: "bm-app-backend",
       script: "dist/server.js",
+      log_date_format: "YYYY-MM-DD HH:mm:ss",
       instances: 1,
       env_production: {
         ...require("./secrets.json"),
