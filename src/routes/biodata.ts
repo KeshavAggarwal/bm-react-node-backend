@@ -9,6 +9,65 @@ import mongoose from "mongoose";
 // RevenueCat configuration
 const REVENUECAT_API_KEY = process.env.REVENUECAT_API_KEY;
 const REVENUECAT_PROJECT_ID = process.env.REVENUECAT_PROJECT_ID;
+const REVENUECAT_BASE_URL = "https://api.revenuecat.com";
+
+// Function to fetch all purchases for a customer with pagination support
+async function getAllCustomerPurchases(
+  customerId: string, 
+  environment: 'sandbox' | 'production' = 'sandbox'
+): Promise<{
+  success: boolean;
+  purchases: any[];
+  error: string | null;
+}> {
+  if (!REVENUECAT_API_KEY || !REVENUECAT_PROJECT_ID) {
+    return { success: false, purchases: [], error: "RevenueCat configuration is missing" };
+  }
+
+  try {
+    const allPurchases: any[] = [];
+    let nextPagePath: string | null = `/v2/projects/${REVENUECAT_PROJECT_ID}/customers/${customerId}/purchases?environment=${environment}`;
+
+    // Keep fetching until there's no next_page
+    while (nextPagePath) {
+      const url: string = `${REVENUECAT_BASE_URL}${nextPagePath}`;
+      console.log("Fetching purchases from:", url);
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${REVENUECAT_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("RevenueCat API error:", response.status, errorText);
+        return { 
+          success: false, 
+          purchases: [], 
+          error: `Failed to fetch purchases: ${response.status}` 
+        };
+      }
+
+      const data: any = await response.json();
+
+      // Add purchases from this page to the list
+      if (data.items && Array.isArray(data.items)) {
+        allPurchases.push(...data.items);
+      }
+
+      // Check if there's a next page
+      nextPagePath = data.next_page || null;
+    }
+
+    return { success: true, purchases: allPurchases, error: null };
+  } catch (error: any) {
+    console.error("Error fetching customer purchases:", error);
+    return { success: false, purchases: [], error: error.message || "Error fetching purchases" };
+  }
+}
 
 // Function to verify purchase with RevenueCat
 async function verifyRevenueCatPurchase(transactionId: string): Promise<{
