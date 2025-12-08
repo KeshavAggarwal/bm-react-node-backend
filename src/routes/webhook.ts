@@ -1,14 +1,12 @@
 import express from "express";
+import UserBioData from "../models/userBioData";
 
-// RevenueCat configuration
 const REVENUECAT_WEBHOOK_TOKEN = process.env.REVENUECAT_WEBHOOK_TOKEN;
 
 const Router = express.Router();
 
-// POST /webhook - RevenueCat webhook endpoint
 Router.post("/", async (req: express.Request, res: express.Response) => {
   try {
-    // Validate Authorization header
     const authHeader = req.headers.authorization;
     const expectedAuth = `Bearer ${REVENUECAT_WEBHOOK_TOKEN}`;
 
@@ -20,17 +18,53 @@ Router.post("/", async (req: express.Request, res: express.Response) => {
       });
     }
 
-    // Log the entire webhook request
-    console.log("=== RevenueCat Webhook Received ===");
-    console.log("Timestamp:", new Date().toISOString());
-    console.log("Headers:", JSON.stringify(req.headers, null, 2));
-    console.log("Body:", JSON.stringify(req.body, null, 2));
-    console.log("=====================================");
+    const { subscriber_attributes, product_id, app_user_id } = req.body;
 
-    // Respond with success
+    if (!subscriber_attributes?.bm_id?.value) {
+      console.error("Missing bm_id in subscriber_attributes");
+      return res.status(200).json({
+        status: true,
+        message: "Webhook received but bm_id missing"
+      });
+    }
+
+    const biodataId = subscriber_attributes.bm_id.value;
+
+    const biodata = await UserBioData.findOne({
+      _id: biodataId,
+      template_id: product_id,
+      user_id: app_user_id,
+    });
+
+    if (!biodata) {
+      console.error("No matching biodata found");
+      return res.status(200).json({
+        status: true,
+        message: "Webhook received but no matching biodata"
+      });
+    }
+
+    // handling the case where the payment is already processed
+    if (biodata.payment_status === "PAYMENT_SUCCESS") {
+      console.log(`Payment already processed for biodata: ${biodataId}`);
+      return res.status(200).json({
+        status: true,
+        message: "Already processed"
+      });
+    }
+
+    // updating the payment status
+    biodata.payment_status = "PAYMENT_SUCCESS";
+    biodata.pgType = "REVENUECAT";
+    biodata.pg_response_credt = new Date();
+    biodata.pg_response = req.body;
+    await biodata.save();
+
+    console.log(`Payment updated successfully for biodata: ${biodataId}`);
+
     res.status(200).json({
       status: true,
-      message: "Webhook received successfully"
+      message: "Webhook processed successfully"
     });
   } catch (error: any) {
     console.error("Error processing webhook:", error);

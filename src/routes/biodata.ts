@@ -219,26 +219,26 @@ Router.post("/create", authenticateFirebase, async (req: AuthenticatedRequest, r
   }
 });
 
-// POST /biodata/update-payment - Update payment status and generate PDF
-Router.post("/update-payment", authenticateFirebase, async (req: AuthenticatedRequest, res: Response) => {
+// GET /biodata/:id/payment-status - Check payment status
+Router.get("/:id/payment-status", authenticateFirebase, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.uid;
-
-    const { id, transactionId, productId } = req.body;
+    
+    const { id: biodataId } = req.body;
 
     if (!userId) {
       const response: BaseResponse<null> = {
         status: false,
         data: null,
         error: {
-          message: "User ID not found in token",
+          message: "User ID not found",
           code: 400,
         },
       };
       return res.status(400).json(response);
     }
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
+    if (!mongoose.Types.ObjectId.isValid(biodataId)) {
       const response: BaseResponse<null> = {
         status: false,
         data: null,
@@ -250,110 +250,36 @@ Router.post("/update-payment", authenticateFirebase, async (req: AuthenticatedRe
       return res.status(400).json(response);
     }
 
-    // Validate transaction_id
-    if (!transactionId) {
-      const response: BaseResponse<null> = {
-        status: false,
-        data: null,
-        error: {
-          message: "Transaction ID is required",
-          code: 400,
-        },
-      };
-      return res.status(400).json(response);
-    }
-
-    // Find the biodata entry that belongs to the user
     const biodata = await UserBioData.findOne({
-      _id: id,
+      _id: biodataId,
       user_id: userId,
-    });
+    }).select('payment_status');
 
     if (!biodata) {
       const response: BaseResponse<null> = {
         status: false,
         data: null,
         error: {
-          message: "Biodata not found or you don't have access to it",
+          message: "Biodata not found",
           code: 404,
         },
       };
       return res.status(404).json(response);
     }
 
-    // Verify template_id matches product identifier
-    if (productId && biodata.template_id !== productId) {
-      const response: BaseResponse<null> = {
-        status: false,
-        data: null,
-        error: {
-          message: "Product ID does not match the template ID",
-          code: 400,
-        },
-      };
-      return res.status(400).json(response);
-    }
-
-    // Verify purchase with RevenueCat using transaction_id as store_purchase_identifier
-    const verificationResult = await verifyRevenueCatPurchase(transactionId);
-
-    if (!verificationResult.verified) {
-      const response: BaseResponse<null> = {
-        status: false,
-        data: null,
-        error: {
-          message: verificationResult.error || "Purchase verification failed",
-          code: 400,
-        },
-      };
-      return res.status(400).json(response);
-    }
-
-    // Update payment status and dump the entire RevenueCat response
-    biodata.payment_status = "PAYMENT_SUCCESS";
-    biodata.pg_response = { transaction_id: transactionId, revenuecat_response: verificationResult.data };
-    biodata.pg_response_credt = new Date();
-    biodata.pgType = "REVENUECAT";
-    await biodata.save();
-
-    // Generate PDF
-    const template = await loadTemplate(biodata.template_id);
-
-    const formdata: ITemplateProps = {
-      formData: biodata.form_data as unknown as string,
-      isPreview: false,
-      imagePath: biodata.image_path,
+    const response: BaseResponse<{ payment_status: string }> = {
+      status: true,
+      data: { payment_status: biodata.payment_status },
+      error: null,
     };
-
-    const pdfStream = await template(formdata);
-
-    // Setting up the response headers
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename=biodata-${id}.pdf`);
-
-    // Stream the PDF back to the user
-    pdfStream.pipe(res);
+    res.json(response);
   } catch (error: any) {
-    console.error("Error updating payment and generating PDF:", error);
-
-    // Handle invalid template ID errors
-    if (error.message && error.message.includes("Invalid template_id")) {
-      const response: BaseResponse<null> = {
-        status: false,
-        data: null,
-        error: {
-          message: error.message,
-          code: 400,
-        },
-      };
-      return res.status(400).json(response);
-    }
-
+    console.error("Error fetching payment status:", error);
     const response: BaseResponse<null> = {
       status: false,
       data: null,
       error: {
-        message: `Failed to update payment: ${error.message}`,
+        message: `Failed to fetch payment status: ${error.message}`,
         code: 500,
       },
     };
