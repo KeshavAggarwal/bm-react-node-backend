@@ -220,7 +220,7 @@ Router.post("/create", authenticateFirebase, async (req: AuthenticatedRequest, r
 });
 
 // GET /biodata/:id/payment-status - Check payment status
-Router.get("/:id/payment-status", authenticateFirebase, async (req: AuthenticatedRequest, res: Response) => {
+Router.get("/payment-status", authenticateFirebase, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.uid;
     
