@@ -219,12 +219,15 @@ Router.post("/create", authenticateFirebase, async (req: AuthenticatedRequest, r
   }
 });
 
-// GET /biodata/:id/payment-status - Check payment status
+// POST /biodata/payment-status - Check payment status
 Router.post("/payment-status", authenticateFirebase, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.uid;
     
     const { id: biodataId } = req.body;
+    console.log("-----POLLING FOR PAYMENT STATUS-----")
+    console.log(req.body);
+    console.log(biodataId);
 
     if (!userId) {
       const response: BaseResponse<null> = {
@@ -272,6 +275,8 @@ Router.post("/payment-status", authenticateFirebase, async (req: AuthenticatedRe
       data: { payment_status: biodata.payment_status },
       error: null,
     };
+    console.log("-----PAYMENT STATUS-----")
+    console.log(response);
     res.json(response);
   } catch (error: any) {
     console.error("Error fetching payment status:", error);
