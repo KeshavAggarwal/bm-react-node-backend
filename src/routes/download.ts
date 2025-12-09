@@ -39,7 +39,7 @@ Router.post("/preview", authenticateFirebase, async (req: AuthenticatedRequest, 
     const result = await template(formdata);
     // Setting up the response headers
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename=export.pdf`);
+    res.setHeader("Content-Disposition", `attachment; filename=biodata-preview-bm.pdf`);
 
     // Streaming our resulting pdf back to the user
     result.pipe(res);
