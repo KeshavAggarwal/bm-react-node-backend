@@ -225,9 +225,6 @@ Router.post("/payment-status", authenticateFirebase, async (req: AuthenticatedRe
     const userId = req.user?.uid;
     
     const { id: biodataId } = req.body;
-    console.log("-----POLLING FOR PAYMENT STATUS-----")
-    console.log(req.body);
-    console.log(biodataId);
 
     if (!userId) {
       const response: BaseResponse<null> = {

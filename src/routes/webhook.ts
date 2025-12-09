@@ -20,13 +20,6 @@ Router.post("/", async (req: express.Request, res: express.Response) => {
 
     const { subscriber_attributes, product_id, app_user_id } = req.body.event;
 
-    console.log(req.body);
-    console.log(subscriber_attributes);
-    console.log(product_id);
-    console.log(app_user_id);
-
-    console.log(subscriber_attributes?.bm_id?.value);
-
     if (!subscriber_attributes?.bm_id?.value) {
       console.error("Missing bm_id in subscriber_attributes");
       return res.status(200).json({
