@@ -18,7 +18,7 @@ Router.post("/", async (req: express.Request, res: express.Response) => {
       });
     }
 
-    const { subscriber_attributes, product_id, app_user_id } = req.body;
+    const { subscriber_attributes, product_id, app_user_id } = req.body.event;
 
     console.log(req.body);
     console.log(subscriber_attributes);
