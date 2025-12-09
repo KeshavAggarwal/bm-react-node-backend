@@ -133,7 +133,7 @@ Router.post("/final", authenticateFirebase, async (req: AuthenticatedRequest, re
     const template = await loadTemplate(biodata.template_id);
 
     const formdata: ITemplateProps = {
-      formData: biodata.form_data as unknown as string,
+      formData: JSON.stringify(biodata.form_data),
       isPreview: false,
       imagePath: biodata.image_path,
     };
