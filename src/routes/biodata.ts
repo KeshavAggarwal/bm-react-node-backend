@@ -329,7 +329,6 @@ Router.get("/", authenticateFirebase, async (req: AuthenticatedRequest, res: Res
       return {
         id: item._id.toString(),
         name: name,
-        form_data: item.form_data,
         template_id: item.template_id,
         image_path: item.image_path,
         created_on: item.created_on,
