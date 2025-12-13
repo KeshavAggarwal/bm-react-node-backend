@@ -313,13 +313,28 @@ Router.get("/", authenticateFirebase, async (req: AuthenticatedRequest, res: Res
       .sort({ created_on: -1 }) // Sort by newest first
       .lean();
 
-    const biodataList = biodataListRaw.map(item => ({
-      id: item._id.toString(),
-      form_data: item.form_data,
-      template_id: item.template_id,
-      image_path: item.image_path,
-      created_on: item.created_on,
-    }));
+    const biodataList = biodataListRaw.map(item => {
+      // Extract name from form_data
+      let name = 'Unknown';
+      if (Array.isArray(item.form_data)) {
+        const personalDetails = item.form_data.find((section: any) => section.key === 'Personal Details');
+        if (personalDetails && Array.isArray(personalDetails.data)) {
+          const nameField = personalDetails.data.find((field: any) => field.key === 'Name');
+          if (nameField && nameField.value) {
+            name = nameField.value;
+          }
+        }
+      }
+
+      return {
+        id: item._id.toString(),
+        name: name,
+        form_data: item.form_data,
+        template_id: item.template_id,
+        image_path: item.image_path,
+        created_on: item.created_on,
+      };
+    });
 
     const response: BaseResponse<typeof biodataList> = {
       status: true,
