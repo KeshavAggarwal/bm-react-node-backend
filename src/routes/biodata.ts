@@ -190,7 +190,7 @@ Router.post("/create", authenticateFirebase, async (req: AuthenticatedRequest, r
     const newBiodata = new UserBioData({
       user_id: userId,
       template_id: tId,
-      form_data: fd,
+      form_data: fd
       image_path: imagePath || null,
       channel: channel as Channel,
       amount,
