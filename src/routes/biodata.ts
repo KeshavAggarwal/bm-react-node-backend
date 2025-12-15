@@ -378,7 +378,7 @@ Router.get("/:id", authenticateFirebase, async (req: AuthenticatedRequest, res: 
       _id: biodataId, 
       user_id: userId 
     })
-      .select('form_data template_id image_path created_on')
+      .select('form_data template_id image_path created_on payment_status')
       .lean();
 
     if (!biodata) {
@@ -393,11 +393,24 @@ Router.get("/:id", authenticateFirebase, async (req: AuthenticatedRequest, res: 
       return res.status(404).json(response);
     }
 
+    if (biodata.payment_status !== "PAYMENT_SUCCESS") {
+      const response: BaseResponse<null> = {
+        status: false,
+        data: null,
+        error: {
+          message: "Payment not completed",
+          code: 403,
+        },
+      };
+      return res.status(403).json(response);
+    }
+
     const mappedBiodata = {
       id: biodata._id.toString(),
       template_id: biodata.template_id,
       image_path: biodata.image_path,
       created_on: biodata.created_on,
+      form_data: biodata.form_data,
     };
 
     const response: BaseResponse<typeof mappedBiodata> = {
