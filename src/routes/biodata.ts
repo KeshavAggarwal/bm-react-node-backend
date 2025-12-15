@@ -190,7 +190,7 @@ Router.post("/create", authenticateFirebase, async (req: AuthenticatedRequest, r
     const newBiodata = new UserBioData({
       user_id: userId,
       template_id: tId,
-      form_data: fd
+      form_data: fd,
       image_path: imagePath || null,
       channel: channel as Channel,
       amount,
@@ -393,9 +393,16 @@ Router.get("/:id", authenticateFirebase, async (req: AuthenticatedRequest, res: 
       return res.status(404).json(response);
     }
 
-    const response: BaseResponse<typeof biodata> = {
+    const mappedBiodata = {
+      id: biodata._id.toString(),
+      template_id: biodata.template_id,
+      image_path: biodata.image_path,
+      created_on: biodata.created_on,
+    };
+
+    const response: BaseResponse<typeof mappedBiodata> = {
       status: true,
-      data: biodata,
+      data: mappedBiodata,
       error: null,
     };
     res.json(response);
