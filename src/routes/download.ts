@@ -120,7 +120,10 @@ Router.post("/final", authenticateFirebase, async (req: AuthenticatedRequest, re
       return res.status(404).json(response);
     }
 
-    if (biodata.payment_status !== "PAYMENT_SUCCESS") {
+    // allowing the free template download without payment
+    const isFreeTemplate = biodata.template_id === "eg0";
+    
+    if (!isFreeTemplate && biodata.payment_status !== "PAYMENT_SUCCESS") {
       const response: BaseResponse<null> = {
         status: false,
         data: null,

@@ -381,8 +381,10 @@ Router.post("/:id/edit", authenticateFirebase, async (req: AuthenticatedRequest,
       return res.status(404).json(response);
     }
 
+    const isFreeTemplate = biodata.template_id === "eg0";
+
     // Check if payment is successful before allowing edits
-    if (biodata.payment_status !== "PAYMENT_SUCCESS") {
+    if (!isFreeTemplate &&biodata.payment_status !== "PAYMENT_SUCCESS") {
       const response: BaseResponse<null> = {
         status: false,
         data: null,
@@ -470,7 +472,9 @@ Router.get("/:id", authenticateFirebase, async (req: AuthenticatedRequest, res: 
       return res.status(404).json(response);
     }
 
-    if (biodata.payment_status !== "PAYMENT_SUCCESS") {
+    const isFreeTemplate = biodata.template_id === "eg0";
+
+    if (!isFreeTemplate && biodata.payment_status !== "PAYMENT_SUCCESS") {
       const response: BaseResponse<null> = {
         status: false,
         data: null,
