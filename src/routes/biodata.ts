@@ -2,72 +2,18 @@ import express, { Response } from "express";
 import { BaseResponse } from "../types/response";
 import { authenticateFirebase, AuthenticatedRequest } from "../middleware/authMiddleware";
 import UserBioData from "../models/userBioData";
-import { loadTemplate } from "../utils";
-import { ITemplateProps } from "../types/templateTypes";
 import mongoose from "mongoose";
+import {
+  mergeBiodataFormData,
+  isValidFormDataStructure,
+} from "../helpers/biodataEditHelper";
+import { getISTDate } from "../helpers";
+import { StateDataType } from "../types/formTypes";
 
 // RevenueCat configuration
 const REVENUECAT_API_KEY = process.env.REVENUECAT_API_KEY;
 const REVENUECAT_PROJECT_ID = process.env.REVENUECAT_PROJECT_ID;
-const REVENUECAT_BASE_URL = "https://api.revenuecat.com";
 
-// Function to fetch all purchases for a customer with pagination support
-async function getAllCustomerPurchases(
-  customerId: string, 
-  environment: 'sandbox' | 'production' = 'sandbox'
-): Promise<{
-  success: boolean;
-  purchases: any[];
-  error: string | null;
-}> {
-  if (!REVENUECAT_API_KEY || !REVENUECAT_PROJECT_ID) {
-    return { success: false, purchases: [], error: "RevenueCat configuration is missing" };
-  }
-
-  try {
-    const allPurchases: any[] = [];
-    let nextPagePath: string | null = `/v2/projects/${REVENUECAT_PROJECT_ID}/customers/${customerId}/purchases?environment=${environment}`;
-
-    // Keep fetching until there's no next_page
-    while (nextPagePath) {
-      const url: string = `${REVENUECAT_BASE_URL}${nextPagePath}`;
-      console.log("Fetching purchases from:", url);
-
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Authorization": `Bearer ${REVENUECAT_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("RevenueCat API error:", response.status, errorText);
-        return { 
-          success: false, 
-          purchases: [], 
-          error: `Failed to fetch purchases: ${response.status}` 
-        };
-      }
-
-      const data: any = await response.json();
-
-      // Add purchases from this page to the list
-      if (data.items && Array.isArray(data.items)) {
-        allPurchases.push(...data.items);
-      }
-
-      // Check if there's a next page
-      nextPagePath = data.next_page || null;
-    }
-
-    return { success: true, purchases: allPurchases, error: null };
-  } catch (error: any) {
-    console.error("Error fetching customer purchases:", error);
-    return { success: false, purchases: [], error: error.message || "Error fetching purchases" };
-  }
-}
 
 // Function to verify purchase with RevenueCat
 async function verifyRevenueCatPurchase(transactionId: string): Promise<{
@@ -355,6 +301,137 @@ Router.get("/", authenticateFirebase, async (req: AuthenticatedRequest, res: Res
   }
 });
 
+// PUT /biodata/:id/edit - Edit biodata (only form_data_editable)
+Router.put("/:id/edit", authenticateFirebase, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user?.uid;
+    const biodataId = req.params.id;
+    const { fd: incomingFormData, imagePath} = req.body;
+
+    if (!userId) {
+      const response: BaseResponse<null> = {
+        status: false,
+        data: null,
+        error: {
+          message: "User ID not found in token",
+          code: 400,
+        },
+      };
+      return res.status(400).json(response);
+    }
+
+    // Validate MongoDB ObjectId
+    if (!mongoose.Types.ObjectId.isValid(biodataId)) {
+      const response: BaseResponse<null> = {
+        status: false,
+        data: null,
+        error: {
+          message: "Invalid ID format",
+          code: 400,
+        },
+      };
+      return res.status(400).json(response);
+    }
+
+    // Allow empty object {} for intentional clear
+    if (incomingFormData === undefined || incomingFormData === null) {
+      const response: BaseResponse<null> = {
+        status: false,
+        data: null,
+        error: {
+          message: "data is required in request body",
+          code: 400,
+        },
+      };
+      return res.status(400).json(response);
+    }
+
+    // If not empty, validate structure
+    if (
+      typeof incomingFormData === "object" &&
+      Object.keys(incomingFormData).length > 0 &&
+      !isValidFormDataStructure(incomingFormData)
+    ) {
+      const response: BaseResponse<null> = {
+        status: false,
+        data: null,
+        error: {
+          message: "Invalid form_data structure",
+          code: 400,
+        },
+      };
+      return res.status(400).json(response);
+    }
+
+    // Fetch the biodata document
+    const biodata = await UserBioData.findOne({
+      _id: biodataId,
+      user_id: userId,
+    });
+
+    if (!biodata) {
+      const response: BaseResponse<null> = {
+        status: false,
+        data: null,
+        error: {
+          message: "Biodata not found or you don't have access to it",
+          code: 404,
+        },
+      };
+      return res.status(404).json(response);
+    }
+
+    // Check if payment is successful before allowing edits
+    if (biodata.payment_status !== "PAYMENT_SUCCESS") {
+      const response: BaseResponse<null> = {
+        status: false,
+        data: null,
+        error: {
+          message: "Cannot edit biodata - payment not completed",
+          code: 403,
+        },
+      };
+      return res.status(403).json(response);
+    }
+
+    // Accept all form data as-is (including restricted fields)
+    // Protection happens during merge - restricted fields always use original values
+    // Empty {} is valid - it clears all edits
+    biodata.form_data_editable = incomingFormData;
+    biodata.last_edit_at = getISTDate();
+    biodata.edit_version = (biodata.edit_version || 0) + 1;
+
+    // Update image path if provided
+    if (imagePath !== undefined) {
+      biodata.image_path = imagePath;
+    }
+
+    await biodata.save();
+
+    const response: BaseResponse<{
+      message: string;
+    }> = {
+      status: true,
+      data: {
+        message: "Biodata updated successfully",
+      },
+      error: null,
+    };
+    res.json(response);
+  } catch (error: any) {
+    console.error("Error editing biodata:", error);
+    const response: BaseResponse<null> = {
+      status: false,
+      data: null,
+      error: {
+        message: `Failed to edit biodata: ${error.message}`,
+        code: 500,
+      },
+    };
+    res.status(500).json(response);
+  }
+});
+
 // GET /biodata/:id - Get specific biodata by ID for authenticated user
 Router.get("/:id", authenticateFirebase, async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -378,7 +455,7 @@ Router.get("/:id", authenticateFirebase, async (req: AuthenticatedRequest, res: 
       _id: biodataId, 
       user_id: userId 
     })
-      .select('form_data template_id image_path created_on payment_status')
+      .select('form_data form_data_editable template_id image_path created_on payment_status')
       .lean();
 
     if (!biodata) {
@@ -405,12 +482,18 @@ Router.get("/:id", authenticateFirebase, async (req: AuthenticatedRequest, res: 
       return res.status(403).json(response);
     }
 
+    // Merge form_data with form_data_editable for the final biodata
+    const finalFormData = mergeBiodataFormData(
+      biodata.form_data as StateDataType,
+      biodata.form_data_editable as StateDataType
+    );
+
     const mappedBiodata = {
       id: biodata._id.toString(),
       template_id: biodata.template_id,
       image_path: biodata.image_path,
       created_on: biodata.created_on,
-      form_data: biodata.form_data,
+      form_data: finalFormData,
     };
 
     const response: BaseResponse<typeof mappedBiodata> = {

@@ -6,6 +6,9 @@ export interface IUserBioData extends Document {
   created_on: Date;
   template_id: string;
   form_data: Record<string, any>;
+  form_data_editable: Record<string, any>; // Editable fields after payment
+  last_edit_at: Date | null; // Last edit timestamp
+  edit_version: number; // Increments on each edit
   pg_response: Record<string, any>;
   payment_status: "PAYMENT_SUCCESS" | "PAYMENT_INITIATED" | "PAYMENT_ERROR";
   amount: number;
@@ -52,6 +55,18 @@ const userBioDataSchema = new Schema<IUserBioData>({
   },
   form_data: {
     type: Object,
+  },
+  form_data_editable: {
+    type: Object,
+    default: {},
+  },
+  last_edit_at: {
+    type: Date,
+    default: null,
+  },
+  edit_version: {
+    type: Number,
+    default: 0,
   },
   payment_status: {
     type: String,

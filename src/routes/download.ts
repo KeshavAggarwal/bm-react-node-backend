@@ -5,6 +5,8 @@ import { authenticateFirebase, AuthenticatedRequest } from "../middleware/authMi
 import { BaseResponse } from "../types/response";
 import UserBioData from "../models/userBioData";
 import mongoose from "mongoose";
+import { mergeBiodataFormData } from "../helpers/biodataEditHelper";
+import { StateDataType } from "../types/formTypes";
 
 const Router = express.Router();
 
@@ -130,10 +132,16 @@ Router.post("/final", authenticateFirebase, async (req: AuthenticatedRequest, re
       return res.status(403).json(response);
     }
 
+    // Merge form_data with form_data_editable for final PDF generation
+    const finalFormData = mergeBiodataFormData(
+      biodata.form_data as StateDataType,
+      biodata.form_data_editable as StateDataType
+    );
+
     const template = await loadTemplate(biodata.template_id);
 
     const formdata: ITemplateProps = {
-      formData: JSON.stringify(biodata.form_data),
+      formData: JSON.stringify(finalFormData),
       isPreview: false,
       imagePath: biodata.image_path,
     };
