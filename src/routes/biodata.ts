@@ -302,7 +302,7 @@ Router.get("/", authenticateFirebase, async (req: AuthenticatedRequest, res: Res
 });
 
 // PUT /biodata/:id/edit - Edit biodata (only form_data_editable)
-Router.put("/:id/edit", authenticateFirebase, async (req: AuthenticatedRequest, res: Response) => {
+Router.post("/:id/edit", authenticateFirebase, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.uid;
     const biodataId = req.params.id;
