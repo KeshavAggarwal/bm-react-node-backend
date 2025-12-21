@@ -255,7 +255,7 @@ Router.get("/", authenticateFirebase, async (req: AuthenticatedRequest, res: Res
 
     // Query MongoDB for user's biodata - only select specific fields
     const biodataListRaw = await UserBioData.find({ user_id: userId })
-      .select('form_data template_id image_path created_on')
+      .select('form_data template_id image_path created_on last_edit_at')
       .sort({ created_on: -1 }) // Sort by newest first
       .lean();
 
@@ -278,6 +278,8 @@ Router.get("/", authenticateFirebase, async (req: AuthenticatedRequest, res: Res
         template_id: item.template_id,
         image_path: item.image_path,
         created_on: item.created_on,
+        is_free: item.template_id === "eg0",
+        modified_on: item.last_edit_at,
       };
     });
 
