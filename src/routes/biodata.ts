@@ -7,7 +7,7 @@ import {
   mergeBiodataFormData,
   isValidFormDataStructure,
 } from "../helpers/biodataEditHelper";
-import { getISTDate } from "../helpers";
+import { fixToIST, getISTDate } from "../helpers";
 import { StateDataType } from "../types/formTypes";
 
 // RevenueCat configuration
@@ -277,9 +277,9 @@ Router.get("/", authenticateFirebase, async (req: AuthenticatedRequest, res: Res
         name: name,
         template_id: item.template_id,
         image_path: item.image_path,
-        created_on: item.created_on,
+        created_on: fixToIST(item.created_on),
         is_free: item.template_id === "eg0",
-        modified_on: item.last_edit_at,
+        modified_on: item.last_edit_at ? fixToIST(item.last_edit_at) : null,
       };
     });
 
@@ -498,7 +498,7 @@ Router.get("/:id", authenticateFirebase, async (req: AuthenticatedRequest, res: 
       id: biodata._id.toString(),
       template_id: biodata.template_id,
       image_path: biodata.image_path,
-      created_on: biodata.created_on,
+      created_on: fixToIST(biodata.created_on),
       form_data: finalFormData,
     };
 

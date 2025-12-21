@@ -5,3 +5,13 @@ export const getISTDate = () => {
   const istTime = new Date(now.getTime() + istOffset * 60 * 1000);
   return istTime;
 };
+
+export const fixToIST = (dbDate: Date) => {
+  if (!dbDate) return null;
+
+  // dbDate is currently treated as UTC, but it's actually IST
+  // Subtract IST offset so Flutter parsing works correctly
+  const correctedDate = new Date(dbDate.getTime() - (5 * 60 + 30) * 60 * 1000);
+
+  return correctedDate.toISOString(); // send ISO string
+}
