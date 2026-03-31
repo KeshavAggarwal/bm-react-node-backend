@@ -10,6 +10,15 @@ import {
 import { fixToIST, getISTDate } from "../helpers";
 import { StateDataType } from "../types/formTypes";
 
+type BillingStatus = "FREE" | "PAID" | "UNPAID" | "FAILED";
+
+function getBillingStatus(templateId: string, paymentStatus: string): BillingStatus {
+  if (templateId === "eg0") return "FREE";
+  if (paymentStatus === "PAYMENT_SUCCESS") return "PAID";
+  if (paymentStatus === "PAYMENT_ERROR") return "FAILED";
+  return "UNPAID";
+}
+
 // RevenueCat configuration
 const REVENUECAT_API_KEY = process.env.REVENUECAT_API_KEY;
 const REVENUECAT_PROJECT_ID = process.env.REVENUECAT_PROJECT_ID;
@@ -255,7 +264,7 @@ Router.get("/", authenticateFirebase, async (req: AuthenticatedRequest, res: Res
 
     // Query MongoDB for user's biodata - only select specific fields
     const biodataListRaw = await UserBioData.find({ user_id: userId })
-      .select('form_data template_id image_path created_on last_edit_at')
+      .select('form_data template_id image_path created_on last_edit_at payment_status')
       .sort({ created_on: -1 }) // Sort by newest first
       .lean();
 
@@ -279,6 +288,7 @@ Router.get("/", authenticateFirebase, async (req: AuthenticatedRequest, res: Res
         image_path: item.image_path,
         created_on: fixToIST(item.created_on),
         is_free: item.template_id === "eg0",
+        billing_status: getBillingStatus(item.template_id, item.payment_status),
         modified_on: item.last_edit_at ? fixToIST(item.last_edit_at) : null,
       };
     });
@@ -303,7 +313,7 @@ Router.get("/", authenticateFirebase, async (req: AuthenticatedRequest, res: Res
   }
 });
 
-// PUT /biodata/:id/edit - Edit biodata (only form_data_editable)
+// PUT /biodata/:id/edit - Edit biodata (only form_data_editable). This api is used to edit the biodata.
 Router.post("/:id/edit", authenticateFirebase, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.uid;
@@ -386,7 +396,7 @@ Router.post("/:id/edit", authenticateFirebase, async (req: AuthenticatedRequest,
     const isFreeTemplate = biodata.template_id === "eg0";
 
     // Check if payment is successful before allowing edits
-    if (!isFreeTemplate &&biodata.payment_status !== "PAYMENT_SUCCESS") {
+    if (!isFreeTemplate && biodata.payment_status !== "PAYMENT_SUCCESS") {
       const response: BaseResponse<null> = {
         status: false,
         data: null,
@@ -436,7 +446,8 @@ Router.post("/:id/edit", authenticateFirebase, async (req: AuthenticatedRequest,
   }
 });
 
-// GET /biodata/:id - Get specific biodata by ID for authenticated user
+// GET /biodata/:id - Get specific biodata by ID for authenticated user, this api is called when user clicks the edit button in the biodata list.
+// This api is used to get the biodata for editing.
 Router.get("/:id", authenticateFirebase, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.uid;
@@ -474,20 +485,6 @@ Router.get("/:id", authenticateFirebase, async (req: AuthenticatedRequest, res: 
       return res.status(404).json(response);
     }
 
-    const isFreeTemplate = biodata.template_id === "eg0";
-
-    if (!isFreeTemplate && biodata.payment_status !== "PAYMENT_SUCCESS") {
-      const response: BaseResponse<null> = {
-        status: false,
-        data: null,
-        error: {
-          message: "Payment not completed",
-          code: 403,
-        },
-      };
-      return res.status(403).json(response);
-    }
-
     // Merge form_data with form_data_editable for the final biodata
     const finalFormData = mergeBiodataFormData(
       biodata.form_data as StateDataType,
@@ -499,6 +496,7 @@ Router.get("/:id", authenticateFirebase, async (req: AuthenticatedRequest, res: 
       template_id: biodata.template_id,
       image_path: biodata.image_path,
       created_on: fixToIST(biodata.created_on),
+      billing_status: getBillingStatus(biodata.template_id, biodata.payment_status),
       form_data: finalFormData,
     };
 
