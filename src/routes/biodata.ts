@@ -287,7 +287,7 @@ Router.get("/", authenticateFirebase, async (req: AuthenticatedRequest, res: Res
         template_id: item.template_id,
         image_path: item.image_path,
         created_on: fixToIST(item.created_on),
-        is_free: item.template_id === "eg0",
+        is_free: item.template_id === "eg0" || item.payment_status !== "PAYMENT_SUCCESS",
         billing_status: getBillingStatus(item.template_id, item.payment_status),
         modified_on: item.last_edit_at ? fixToIST(item.last_edit_at) : null,
       };
