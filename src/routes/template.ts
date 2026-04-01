@@ -65,6 +65,13 @@ Router.get("/list", authenticateFirebase, async (req: AuthenticatedRequest, res:
         imageOnly: false,
       },
       {
+        id: "eg27",
+        imageUrl:
+          "https://res.cloudinary.com/drmmw7mn8/image/upload/v1775044873/cream-and-gold-marriage-biodata-format-example-girl_mtylkc.png",
+        price: p3,
+        imageOnly: false,
+      },
+      {
         id: "eg24",
         imageUrl:
           "https://res.cloudinary.com/drmmw7mn8/image/upload/v1753823903/red-background-marriage-biodata-template-example-girl_ailbsm.png",
