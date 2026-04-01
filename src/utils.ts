@@ -189,6 +189,7 @@ const VALID_TEMPLATE_IDS = new Set([
   "eg24",
   "eg25",
   "eg26",
+  "eg27",
   "eg30",
 ]);
 
