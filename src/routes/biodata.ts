@@ -393,14 +393,7 @@ Router.post("/:id/edit", authenticateFirebase, async (req: AuthenticatedRequest,
       return res.status(404).json(response);
     }
 
-    // Accept all form data as-is (including restricted fields)
-    // Protection happens during merge - restricted fields always use original values
-    // Empty {} is valid - it clears all edits
-    biodata.form_data_editable = incomingFormData;
-    biodata.last_edit_at = getISTDate();
-    biodata.edit_version = (biodata.edit_version || 0) + 1;
-
-    // Reject template change attempts on paid entries
+    // Reject template change attempts on paid entries before mutating anything
     if (templateId && biodata.payment_status === "PAYMENT_SUCCESS" && templateId !== biodata.template_id) {
       const response: BaseResponse<null> = {
         status: false,
@@ -412,6 +405,13 @@ Router.post("/:id/edit", authenticateFirebase, async (req: AuthenticatedRequest,
       };
       return res.status(403).json(response);
     }
+
+    // Accept all form data as-is (including restricted fields)
+    // Protection happens during merge - restricted fields always use original values
+    // Empty {} is valid - it clears all edits
+    biodata.form_data_editable = incomingFormData;
+    biodata.last_edit_at = getISTDate();
+    biodata.edit_version = (biodata.edit_version || 0) + 1;
 
     // Allow template change only when not yet paid (UNPAID/FAILED)
     if (templateId && biodata.payment_status !== "PAYMENT_SUCCESS") {
@@ -462,6 +462,18 @@ Router.get("/:id", authenticateFirebase, async (req: AuthenticatedRequest, res: 
         data: null,
         error: {
           message: "User ID not found in token",
+          code: 400,
+        },
+      };
+      return res.status(400).json(response);
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(biodataId)) {
+      const response: BaseResponse<null> = {
+        status: false,
+        data: null,
+        error: {
+          message: "Invalid ID format",
           code: 400,
         },
       };
