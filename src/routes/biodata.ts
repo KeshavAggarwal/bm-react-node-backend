@@ -318,7 +318,7 @@ Router.post("/:id/edit", authenticateFirebase, async (req: AuthenticatedRequest,
   try {
     const userId = req.user?.uid;
     const biodataId = req.params.id;
-    const { fd: incomingFormData, imagePath} = req.body;
+    const { fd: incomingFormData, imagePath, tId: templateId } = req.body;
 
     if (!userId) {
       const response: BaseResponse<null> = {
@@ -393,15 +393,13 @@ Router.post("/:id/edit", authenticateFirebase, async (req: AuthenticatedRequest,
       return res.status(404).json(response);
     }
 
-    const isFreeTemplate = biodata.template_id === "eg0";
-
-    // Check if payment is successful before allowing edits
-    if (!isFreeTemplate && biodata.payment_status !== "PAYMENT_SUCCESS") {
+    // Reject template change attempts on paid entries before mutating anything
+    if (templateId && biodata.payment_status === "PAYMENT_SUCCESS" && templateId !== biodata.template_id) {
       const response: BaseResponse<null> = {
         status: false,
         data: null,
         error: {
-          message: "Cannot edit biodata - payment not completed",
+          message: "Template cannot be changed after payment",
           code: 403,
         },
       };
@@ -414,6 +412,11 @@ Router.post("/:id/edit", authenticateFirebase, async (req: AuthenticatedRequest,
     biodata.form_data_editable = incomingFormData;
     biodata.last_edit_at = getISTDate();
     biodata.edit_version = (biodata.edit_version || 0) + 1;
+
+    // Allow template change only when not yet paid (UNPAID/FAILED)
+    if (templateId && biodata.payment_status !== "PAYMENT_SUCCESS") {
+      biodata.template_id = templateId;
+    }
 
     // Update image path if provided
     if (imagePath !== undefined) {
@@ -459,6 +462,18 @@ Router.get("/:id", authenticateFirebase, async (req: AuthenticatedRequest, res: 
         data: null,
         error: {
           message: "User ID not found in token",
+          code: 400,
+        },
+      };
+      return res.status(400).json(response);
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(biodataId)) {
+      const response: BaseResponse<null> = {
+        status: false,
+        data: null,
+        error: {
+          message: "Invalid ID format",
           code: 400,
         },
       };
