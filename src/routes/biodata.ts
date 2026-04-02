@@ -400,6 +400,19 @@ Router.post("/:id/edit", authenticateFirebase, async (req: AuthenticatedRequest,
     biodata.last_edit_at = getISTDate();
     biodata.edit_version = (biodata.edit_version || 0) + 1;
 
+    // Reject template change attempts on paid entries
+    if (templateId && biodata.payment_status === "PAYMENT_SUCCESS" && templateId !== biodata.template_id) {
+      const response: BaseResponse<null> = {
+        status: false,
+        data: null,
+        error: {
+          message: "Template cannot be changed after payment",
+          code: 403,
+        },
+      };
+      return res.status(403).json(response);
+    }
+
     // Allow template change only when not yet paid (UNPAID/FAILED)
     if (templateId && biodata.payment_status !== "PAYMENT_SUCCESS") {
       biodata.template_id = templateId;
