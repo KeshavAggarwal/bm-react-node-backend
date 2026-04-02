@@ -318,7 +318,7 @@ Router.post("/:id/edit", authenticateFirebase, async (req: AuthenticatedRequest,
   try {
     const userId = req.user?.uid;
     const biodataId = req.params.id;
-    const { fd: incomingFormData, imagePath} = req.body;
+    const { fd: incomingFormData, imagePath, tId: templateId } = req.body;
 
     if (!userId) {
       const response: BaseResponse<null> = {
@@ -393,27 +393,17 @@ Router.post("/:id/edit", authenticateFirebase, async (req: AuthenticatedRequest,
       return res.status(404).json(response);
     }
 
-    const isFreeTemplate = biodata.template_id === "eg0";
-
-    // Check if payment is successful before allowing edits
-    if (!isFreeTemplate && biodata.payment_status !== "PAYMENT_SUCCESS") {
-      const response: BaseResponse<null> = {
-        status: false,
-        data: null,
-        error: {
-          message: "Cannot edit biodata - payment not completed",
-          code: 403,
-        },
-      };
-      return res.status(403).json(response);
-    }
-
     // Accept all form data as-is (including restricted fields)
     // Protection happens during merge - restricted fields always use original values
     // Empty {} is valid - it clears all edits
     biodata.form_data_editable = incomingFormData;
     biodata.last_edit_at = getISTDate();
     biodata.edit_version = (biodata.edit_version || 0) + 1;
+
+    // Allow template change only when not yet paid (UNPAID/FAILED)
+    if (templateId && biodata.payment_status !== "PAYMENT_SUCCESS") {
+      biodata.template_id = templateId;
+    }
 
     // Update image path if provided
     if (imagePath !== undefined) {
