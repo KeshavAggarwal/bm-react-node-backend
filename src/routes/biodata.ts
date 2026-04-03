@@ -6,6 +6,8 @@ import mongoose from "mongoose";
 import {
   mergeBiodataFormData,
   isValidFormDataStructure,
+  extractNormalizedName,
+  extractName,
 } from "../helpers/biodataEditHelper";
 import { fixToIST, getISTDate } from "../helpers";
 import { StateDataType } from "../types/formTypes";
@@ -141,7 +143,42 @@ Router.post("/create", authenticateFirebase, async (req: AuthenticatedRequest, r
       return res.status(400).json(response);
     }
 
-    // Create new biodata entry
+    const incomingName = extractNormalizedName(fd);
+
+    // Check if user already has a Pending entry with the same normalized name
+    // If yes, reuse it to avoid duplicate Pending cards on home screen
+    if (incomingName) {
+      const pendingEntries = await UserBioData.find({
+        user_id: userId,
+        payment_status: { $in: ["PAYMENT_INITIATED", "PAYMENT_ERROR"] },
+      }).sort({ created_on: -1 });
+
+      const matchedEntry = pendingEntries.find(entry => {
+        const existingName = extractNormalizedName(entry.form_data);
+        return existingName === incomingName;
+      });
+
+      if (matchedEntry) {
+        matchedEntry.template_id = tId;
+        matchedEntry.form_data = fd;
+        matchedEntry.image_path = imagePath || null;
+        matchedEntry.payment_attempts.push({
+          attempted_at: getISTDate(),
+          template_id: tId,
+        });
+
+        await matchedEntry.save();
+
+        const response: BaseResponse<{ id: string }> = {
+          status: true,
+          data: { id: matchedEntry._id.toString() },
+          error: null,
+        };
+        return res.status(200).json(response);
+      }
+    }
+
+    // No matching Pending entry — create a fresh one
     const newBiodata = new UserBioData({
       user_id: userId,
       template_id: tId,
@@ -150,6 +187,7 @@ Router.post("/create", authenticateFirebase, async (req: AuthenticatedRequest, r
       channel: channel as Channel,
       amount,
       currency,
+      payment_attempts: [{ attempted_at: getISTDate(), template_id: tId }],
     });
 
     const savedBiodata = await newBiodata.save();
@@ -269,17 +307,7 @@ Router.get("/", authenticateFirebase, async (req: AuthenticatedRequest, res: Res
       .lean();
 
     const biodataList = biodataListRaw.map(item => {
-      // Extract name from form_data
-      let name = 'Unknown';
-      if (Array.isArray(item.form_data)) {
-        const personalDetails = item.form_data.find((section: any) => section.key === 'Personal Details');
-        if (personalDetails && Array.isArray(personalDetails.data)) {
-          const nameField = personalDetails.data.find((field: any) => field.key === 'Name');
-          if (nameField && nameField.value) {
-            name = nameField.value;
-          }
-        }
-      }
+      const name = extractName(item.form_data) ?? 'Unknown';
 
       return {
         id: item._id.toString(),
@@ -414,6 +442,7 @@ Router.post("/:id/edit", authenticateFirebase, async (req: AuthenticatedRequest,
     biodata.edit_version = (biodata.edit_version || 0) + 1;
 
     // Allow template change only when not yet paid (UNPAID/FAILED)
+    // TODO: i guess this will also allow the template edit in FREE case but we are not doing this in app
     if (templateId && biodata.payment_status !== "PAYMENT_SUCCESS") {
       biodata.template_id = templateId;
     }
