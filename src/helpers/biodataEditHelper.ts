@@ -5,6 +5,29 @@ import { getISTDate } from "../helpers";
 const RESTRICTED_FIELDS = ["name", "date of birth", "place of birth"];
 
 /**
+ * Extracts the raw name from form_data.
+ * Returns null if name cannot be extracted.
+ */
+export function extractName(formData: any): string | null {
+  if (!Array.isArray(formData)) return null;
+  const personalDetails = formData.find((s: any) => s.key === "Personal Details");
+  if (!personalDetails || !Array.isArray(personalDetails.data)) return null;
+  const nameField = personalDetails.data.find((f: any) => f.key === "Name");
+  return nameField?.value ?? null;
+}
+
+/**
+ * Extracts and normalizes the name from form_data for comparison purposes.
+ * Normalization: trim, lowercase, collapse multiple spaces.
+ * Returns null if name cannot be extracted.
+ */
+export function extractNormalizedName(formData: any): string | null {
+  const name = extractName(formData);
+  if (!name) return null;
+  return name.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/**
  * Checks if a field key matches any restricted field (case-insensitive)
  */
 function isRestrictedField(fieldKey: string): boolean {

@@ -42,6 +42,10 @@ export interface IUserBioData extends Document {
   parent_transaction_id: string | null;
   user_id: string; // Firebase UID
   channel: "ANDROID" | "IOS" | "WEB";
+  payment_attempts: Array<{
+    attempted_at: Date;
+    template_id: string;
+  }>;
 }
 
 const userBioDataSchema = new Schema<IUserBioData>({
@@ -173,6 +177,15 @@ const userBioDataSchema = new Schema<IUserBioData>({
     type: String,
     default: null,
   },
+  payment_attempts: {
+    type: [
+      {
+        attempted_at: { type: Date, required: true },
+        template_id: { type: String, required: true },
+      }
+    ],
+    default: [],
+  },
   fbp: {
     type: String,
     required: false,
@@ -184,7 +197,6 @@ const userBioDataSchema = new Schema<IUserBioData>({
   user_id: {
     type: String,
     required: false, // Optional for backward compatibility with existing records
-    index: true, // Add index for faster queries
   },
   channel: {
     type: String,
@@ -192,5 +204,8 @@ const userBioDataSchema = new Schema<IUserBioData>({
     default: "WEB",
   },
 });
+
+// Compound index for frequent query pattern: filter by user + payment status
+userBioDataSchema.index({ user_id: 1, payment_status: 1 });
 
 export default mongoose.model<IUserBioData>("UserBioData", userBioDataSchema);
