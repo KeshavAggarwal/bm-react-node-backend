@@ -102,7 +102,7 @@ Router.post("/create", authenticateFirebase, async (req: AuthenticatedRequest, r
       return res.status(400).json(response);
     }
 
-    const { tId, fd, imagePath, channel, amount = 0, currency = "INR" } = req.body;
+    const { tId, fd, imagePath, channel, amount = 0, currency = "INR", utmSource, utmMedium, utmCampaign } = req.body;
 
     // Validate fd is not null or empty
     if (!fd || (typeof fd === "object" && Object.keys(fd).length === 0)) {
@@ -187,6 +187,9 @@ Router.post("/create", authenticateFirebase, async (req: AuthenticatedRequest, r
       channel: channel as Channel,
       amount,
       currency,
+      utmSource,
+      utmMedium,
+      utmCampaign,
       payment_attempts: [{ attempted_at: getISTDate(), template_id: tId }],
     });
 
