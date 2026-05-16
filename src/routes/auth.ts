@@ -3,6 +3,7 @@ import axios from "axios";
 import rateLimit from "express-rate-limit";
 import admin from "../firebaseAdmin";
 import { BaseResponse } from "../types/response";
+import { apiKeyGuard } from "../middleware/authMiddleware";
 
 const Router = express.Router();
 
@@ -66,7 +67,7 @@ const verifyOtpPhoneLimiter = rateLimit({
 
 // POST /auth/send-otp
 // Accepts { phone: "9876543210" } — 10-digit Indian number, no country code
-Router.post("/send-otp", sendOtpIpLimiter, sendOtpPhoneLimiter, async (req: Request, res: Response) => {
+Router.post("/send-otp", apiKeyGuard, sendOtpIpLimiter, sendOtpPhoneLimiter, async (req: Request, res: Response) => {
   try {
     const { phone } = req.body;
 
@@ -118,7 +119,7 @@ Router.post("/send-otp", sendOtpIpLimiter, sendOtpPhoneLimiter, async (req: Requ
 
 // POST /auth/verify-otp
 // Accepts { phone: "9876543210", otp: "123456" }
-Router.post("/verify-otp", verifyOtpIpLimiter, verifyOtpPhoneLimiter, async (req: Request, res: Response) => {
+Router.post("/verify-otp", apiKeyGuard, verifyOtpIpLimiter, verifyOtpPhoneLimiter, async (req: Request, res: Response) => {
   try {
     const { phone, otp } = req.body;
 

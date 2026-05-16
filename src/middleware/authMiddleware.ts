@@ -2,6 +2,19 @@ import { Request, Response, NextFunction } from "express";
 import admin from "../firebaseAdmin";
 import { BaseResponse } from "../types/response";
 
+export const apiKeyGuard = (req: Request, res: Response, next: NextFunction) => {
+  const key = process.env.APP_API_KEY;
+  if (!key || req.headers["x-api-key"] !== key) {
+    const response: BaseResponse<null> = {
+      status: false,
+      data: null,
+      error: { message: "Unauthorized", code: 401 },
+    };
+    return res.status(401).json(response);
+  }
+  return next();
+};
+
 export interface AuthenticatedRequest extends Request {
   user?: admin.auth.DecodedIdToken;
 }
