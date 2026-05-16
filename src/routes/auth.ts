@@ -93,6 +93,7 @@ Router.post("/send-otp", apiKeyGuard, sendOtpIpLimiter, sendOtpPhoneLimiter, asy
           template_id: MSG91_TEMPLATE_ID,
           mobile,
           authkey: MSG91_AUTH_KEY,
+          otp_length: 6
         },
       }
     );
