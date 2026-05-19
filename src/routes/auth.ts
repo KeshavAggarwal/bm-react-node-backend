@@ -194,12 +194,14 @@ Router.post("/verify-otp", apiKeyGuard, verifyOtpIpLimiter, verifyOtpPhoneLimite
     // OTP is valid — resolve or create Firebase user
     const phoneNumber = `+91${phone}`;
     let user: admin.auth.UserRecord;
+    let isNewUser = false;
 
     try {
       user = await admin.auth().getUserByPhoneNumber(phoneNumber);
     } catch (fetchError: any) {
       if (fetchError.code === "auth/user-not-found") {
         user = await admin.auth().createUser({ phoneNumber });
+        isNewUser = true;
       } else {
         throw fetchError;
       }
@@ -207,9 +209,9 @@ Router.post("/verify-otp", apiKeyGuard, verifyOtpIpLimiter, verifyOtpPhoneLimite
 
     const customToken = await admin.auth().createCustomToken(user.uid);
 
-    const response: BaseResponse<{ customToken: string }> = {
+    const response: BaseResponse<{ customToken: string, isNewUser: boolean }> = {
       status: true,
-      data: { customToken },
+      data: { customToken, isNewUser },
       error: null,
     };
     return res.status(200).json(response);
