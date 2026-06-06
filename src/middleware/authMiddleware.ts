@@ -2,7 +2,11 @@ import { Request, Response, NextFunction } from "express";
 import admin from "../firebaseAdmin";
 import { BaseResponse } from "../types/response";
 
-export const apiKeyGuard = (req: Request, res: Response, next: NextFunction) => {
+export const apiKeyGuard = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   const key = process.env.APP_API_KEY;
   if (!key || req.headers["x-api-key"] !== key) {
     const response: BaseResponse<null> = {
@@ -15,6 +19,21 @@ export const apiKeyGuard = (req: Request, res: Response, next: NextFunction) => 
   return next();
 };
 
+export const logRequestIp = (
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) => {
+  console.log("[REQUEST DEBUG]", {
+    path: req.path,
+    ip: req.ip,
+    xForwardedFor: req.headers["x-forwarded-for"],
+    remoteAddress: req.socket.remoteAddress,
+  });
+
+  next();
+};
+
 export interface AuthenticatedRequest extends Request {
   user?: admin.auth.DecodedIdToken;
 }
@@ -22,7 +41,7 @@ export interface AuthenticatedRequest extends Request {
 export const authenticateFirebase = async (
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const authHeader = req.headers.authorization;

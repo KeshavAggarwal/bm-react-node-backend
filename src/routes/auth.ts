@@ -3,7 +3,7 @@ import axios from "axios";
 import rateLimit from "express-rate-limit";
 import admin from "../firebaseAdmin";
 import { BaseResponse } from "../types/response";
-import { apiKeyGuard } from "../middleware/authMiddleware";
+import { apiKeyGuard, logRequestIp } from "../middleware/authMiddleware";
 
 const Router = express.Router();
 
@@ -13,7 +13,14 @@ const MSG91_TEMPLATE_ID = process.env.MSG91_TEMPLATE_ID as string;
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
 function rateLimitHandler(message: string) {
-  return (_req: Request, res: Response) => {
+  return (req: Request, res: Response) => {
+    console.log("[RATE LIMIT]", {
+      path: req.path,
+      ip: req.ip,
+      xForwardedFor: req.headers["x-forwarded-for"],
+      phone: req.body?.phone,
+      message,
+    });
     const response: BaseResponse<null> = {
       status: false,
       data: null,
@@ -38,7 +45,9 @@ const sendOtpPhoneLimiter = rateLimit({
   windowMs: ONE_HOUR_MS,
   limit: 10,
   keyGenerator: (req) => `phone:${req.body?.phone ?? req.ip}`,
-  handler: rateLimitHandler("Too many OTP requests. Please try again after an hour."),
+  handler: rateLimitHandler(
+    "Too many OTP requests. Please try again after an hour.",
+  ),
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -49,7 +58,9 @@ const verifyOtpIpLimiter = rateLimit({
   limit: 10,
   skipSuccessfulRequests: true,
   keyGenerator: (req) => req.ip ?? "unknown",
-  handler: rateLimitHandler("Too many verification attempts. Please try again later."),
+  handler: rateLimitHandler(
+    "Too many verification attempts. Please try again later.",
+  ),
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -67,166 +78,188 @@ const verifyOtpPhoneLimiter = rateLimit({
 
 // POST /auth/send-otp
 // Accepts { phone: "9876543210" } — 10-digit Indian number, no country code
-Router.post("/send-otp", apiKeyGuard, sendOtpIpLimiter, sendOtpPhoneLimiter, async (req: Request, res: Response) => {
-  try {
-    const { phone } = req.body;
+Router.post(
+  "/send-otp",
+  logRequestIp,
+  apiKeyGuard,
+  sendOtpIpLimiter,
+  sendOtpPhoneLimiter,
+  async (req: Request, res: Response) => {
+    try {
+      const { phone } = req.body;
 
-    if (!phone || !/^\d{10}$/.test(phone)) {
+      if (!phone || !/^\d{10}$/.test(phone)) {
+        const response: BaseResponse<null> = {
+          status: false,
+          data: null,
+          error: {
+            message: "A valid 10-digit Indian phone number is required",
+            code: 400,
+          },
+        };
+        return res.status(400).json(response);
+      }
+
+      const mobile = `91${phone}`;
+
+      await axios.post(
+        "https://control.msg91.com/api/v5/otp",
+        {},
+        {
+          params: {
+            template_id: MSG91_TEMPLATE_ID,
+            mobile,
+            authkey: MSG91_AUTH_KEY,
+            otp_length: 6,
+          },
+        },
+      );
+
+      const response: BaseResponse<null> = {
+        status: true,
+        data: null,
+        error: null,
+      };
+      return res.status(200).json(response);
+    } catch (error: any) {
+      console.error(
+        "MSG91 send-otp error:",
+        error?.response?.data ?? error.message,
+      );
       const response: BaseResponse<null> = {
         status: false,
         data: null,
         error: {
-          message: "A valid 10-digit Indian phone number is required",
-          code: 400,
+          message: "Failed to send OTP. Please try again.",
+          code: 500,
         },
       };
-      return res.status(400).json(response);
+      return res.status(500).json(response);
     }
-
-    const mobile = `91${phone}`;
-
-    await axios.post(
-      "https://control.msg91.com/api/v5/otp",
-      {},
-      {
-        params: {
-          template_id: MSG91_TEMPLATE_ID,
-          mobile,
-          authkey: MSG91_AUTH_KEY,
-          otp_length: 6
-        },
-      }
-    );
-
-    const response: BaseResponse<null> = {
-      status: true,
-      data: null,
-      error: null,
-    };
-    return res.status(200).json(response);
-  } catch (error: any) {
-    console.error("MSG91 send-otp error:", error?.response?.data ?? error.message);
-    const response: BaseResponse<null> = {
-      status: false,
-      data: null,
-      error: {
-        message: "Failed to send OTP. Please try again.",
-        code: 500,
-      },
-    };
-    return res.status(500).json(response);
-  }
-});
+  },
+);
 
 // POST /auth/verify-otp
 // Accepts { phone: "9876543210", otp: "123456" }
-Router.post("/verify-otp", apiKeyGuard, verifyOtpIpLimiter, verifyOtpPhoneLimiter, async (req: Request, res: Response) => {
-  try {
-    const { phone, otp } = req.body;
-
-    if (!phone || !/^\d{10}$/.test(phone)) {
-      const response: BaseResponse<null> = {
-        status: false,
-        data: null,
-        error: {
-          message: "A valid 10-digit Indian phone number is required",
-          code: 400,
-        },
-      };
-      return res.status(400).json(response);
-    }
-
-    if (!otp || !/^\d{4,8}$/.test(String(otp))) {
-      const response: BaseResponse<null> = {
-        status: false,
-        data: null,
-        error: {
-          message: "A valid OTP is required",
-          code: 400,
-        },
-      };
-      return res.status(400).json(response);
-    }
-
-    const mobile = `91${phone}`;
-
-    // Verify OTP with MSG91
-    let msg91Response: any;
+Router.post(
+  "/verify-otp",
+  apiKeyGuard,
+  verifyOtpIpLimiter,
+  verifyOtpPhoneLimiter,
+  async (req: Request, res: Response) => {
     try {
-      const { data } = await axios.get(
-        "https://control.msg91.com/api/v5/otp/verify",
-        {
-          params: {
-            mobile,
-            otp: String(otp),
-            authkey: MSG91_AUTH_KEY,
+      const { phone, otp } = req.body;
+
+      if (!phone || !/^\d{10}$/.test(phone)) {
+        const response: BaseResponse<null> = {
+          status: false,
+          data: null,
+          error: {
+            message: "A valid 10-digit Indian phone number is required",
+            code: 400,
           },
-        }
-      );
-      msg91Response = data;
-    } catch (verifyError: any) {
-      // MSG91 returns non-2xx for invalid OTP in some SDK versions; treat as invalid
-      console.error("MSG91 verify-otp error:", verifyError?.response?.data ?? verifyError.message);
-      const response: BaseResponse<null> = {
-        status: false,
-        data: null,
-        error: {
-          message: "Invalid OTP",
-          code: 400,
-        },
-      };
-      return res.status(400).json(response);
-    }
-
-    // MSG91 returns { type: "error", message: "..." } for wrong OTP
-    if (!msg91Response || msg91Response.type === "error") {
-      const response: BaseResponse<null> = {
-        status: false,
-        data: null,
-        error: {
-          message: "Invalid OTP",
-          code: 400,
-        },
-      };
-      return res.status(400).json(response);
-    }
-
-    // OTP is valid — resolve or create Firebase user
-    const phoneNumber = `+91${phone}`;
-    let user: admin.auth.UserRecord;
-    let isNewUser = false;
-
-    try {
-      user = await admin.auth().getUserByPhoneNumber(phoneNumber);
-    } catch (fetchError: any) {
-      if (fetchError.code === "auth/user-not-found") {
-        user = await admin.auth().createUser({ phoneNumber });
-        isNewUser = true;
-      } else {
-        throw fetchError;
+        };
+        return res.status(400).json(response);
       }
+
+      if (!otp || !/^\d{4,8}$/.test(String(otp))) {
+        const response: BaseResponse<null> = {
+          status: false,
+          data: null,
+          error: {
+            message: "A valid OTP is required",
+            code: 400,
+          },
+        };
+        return res.status(400).json(response);
+      }
+
+      const mobile = `91${phone}`;
+
+      // Verify OTP with MSG91
+      let msg91Response: any;
+      try {
+        const { data } = await axios.get(
+          "https://control.msg91.com/api/v5/otp/verify",
+          {
+            params: {
+              mobile,
+              otp: String(otp),
+              authkey: MSG91_AUTH_KEY,
+            },
+          },
+        );
+        msg91Response = data;
+      } catch (verifyError: any) {
+        // MSG91 returns non-2xx for invalid OTP in some SDK versions; treat as invalid
+        console.error(
+          "MSG91 verify-otp error:",
+          verifyError?.response?.data ?? verifyError.message,
+        );
+        const response: BaseResponse<null> = {
+          status: false,
+          data: null,
+          error: {
+            message: "Invalid OTP",
+            code: 400,
+          },
+        };
+        return res.status(400).json(response);
+      }
+
+      // MSG91 returns { type: "error", message: "..." } for wrong OTP
+      if (!msg91Response || msg91Response.type === "error") {
+        const response: BaseResponse<null> = {
+          status: false,
+          data: null,
+          error: {
+            message: "Invalid OTP",
+            code: 400,
+          },
+        };
+        return res.status(400).json(response);
+      }
+
+      // OTP is valid — resolve or create Firebase user
+      const phoneNumber = `+91${phone}`;
+      let user: admin.auth.UserRecord;
+      let isNewUser = false;
+
+      try {
+        user = await admin.auth().getUserByPhoneNumber(phoneNumber);
+      } catch (fetchError: any) {
+        if (fetchError.code === "auth/user-not-found") {
+          user = await admin.auth().createUser({ phoneNumber });
+          isNewUser = true;
+        } else {
+          throw fetchError;
+        }
+      }
+
+      const customToken = await admin.auth().createCustomToken(user.uid);
+
+      const response: BaseResponse<{
+        customToken: string;
+        isNewUser: boolean;
+      }> = {
+        status: true,
+        data: { customToken, isNewUser },
+        error: null,
+      };
+      return res.status(200).json(response);
+    } catch (error: any) {
+      console.error("verify-otp error:", error.message);
+      const response: BaseResponse<null> = {
+        status: false,
+        data: null,
+        error: {
+          message: "Failed to verify OTP. Please try again.",
+          code: 500,
+        },
+      };
+      return res.status(500).json(response);
     }
-
-    const customToken = await admin.auth().createCustomToken(user.uid);
-
-    const response: BaseResponse<{ customToken: string, isNewUser: boolean }> = {
-      status: true,
-      data: { customToken, isNewUser },
-      error: null,
-    };
-    return res.status(200).json(response);
-  } catch (error: any) {
-    console.error("verify-otp error:", error.message);
-    const response: BaseResponse<null> = {
-      status: false,
-      data: null,
-      error: {
-        message: "Failed to verify OTP. Please try again.",
-        code: 500,
-      },
-    };
-    return res.status(500).json(response);
-  }
-});
+  },
+);
 
 export { Router };
