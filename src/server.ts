@@ -9,6 +9,10 @@ import bodyParser from "body-parser";
 import cors from "cors";
 import { Router as allRoutes } from "./routes/index";
 const app = express();
+
+// so that nginx can forward the real client IP in req.ip instead of localhost
+app.set("trust proxy", 1);
+
 const PORT = process.env.PORT;
 
 // Connect to MongoDB (make sure you have MongnpmroDB running)
@@ -17,7 +21,7 @@ mongoose.connect(
   {
     useNewUrlParser: true,
     useUnifiedTopology: true,
-  } as mongoose.ConnectOptions
+  } as mongoose.ConnectOptions,
 );
 
 app.use(cors());
@@ -54,5 +58,5 @@ app.use(function (err: any, req: Request, res: Response, next: NextFunction) {
 });
 
 app.listen(PORT, () =>
-  console.log(`🚀 Server is listening on port ${PORT}...`)
+  console.log(`🚀 Server is listening on port ${PORT}...`),
 );
