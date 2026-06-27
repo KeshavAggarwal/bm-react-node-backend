@@ -4,6 +4,8 @@ import rateLimit from "express-rate-limit";
 import admin from "../firebaseAdmin";
 import { BaseResponse } from "../types/response";
 import { apiKeyGuard, logRequestIp } from "../middleware/authMiddleware";
+import User from "../models/user";
+import { getISTDate } from "../helpers";
 
 const Router = express.Router();
 
@@ -148,7 +150,7 @@ Router.post(
   verifyOtpPhoneLimiter,
   async (req: Request, res: Response) => {
     try {
-      const { phone, otp } = req.body;
+      const { phone, otp, channel = "ANDROID" } = req.body;
 
       if (!phone || !/^\d{10}$/.test(phone)) {
         const response: BaseResponse<null> = {
@@ -168,6 +170,19 @@ Router.post(
           data: null,
           error: {
             message: "A valid OTP is required",
+            code: 400,
+          },
+        };
+        return res.status(400).json(response);
+      }
+
+      const VALID_CHANNELS = ["ANDROID", "IOS"] as const;
+      if (!channel || !VALID_CHANNELS.includes(channel)) {
+        const response: BaseResponse<null> = {
+          status: false,
+          data: null,
+          error: {
+            message: "Invalid request",
             code: 400,
           },
         };
@@ -237,6 +252,15 @@ Router.post(
       }
 
       const customToken = await admin.auth().createCustomToken(user.uid);
+
+      // Upsert the users document
+      await User.findOneAndUpdate(
+        { firebase_uid: user.uid },
+        {
+          $set: { phone, channel, updated_on: getISTDate() },
+        },
+        { upsert: true },
+      );
 
       const response: BaseResponse<{
         customToken: string;
