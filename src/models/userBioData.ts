@@ -46,6 +46,8 @@ export interface IUserBioData extends Document {
     attempted_at: Date;
     template_id: string;
   }>;
+  is_deleted: boolean;
+  deleted_on: Date | null;
 }
 
 const userBioDataSchema = new Schema<IUserBioData>({
@@ -203,9 +205,19 @@ const userBioDataSchema = new Schema<IUserBioData>({
     required: false,
     default: "WEB",
   },
+  is_deleted: {
+    type: Boolean,
+    default: false,
+  },
+  deleted_on: {
+    type: Date,
+    default: null,
+  },
 });
 
 // Compound index for frequent query pattern: filter by user + payment status
 userBioDataSchema.index({ user_id: 1, payment_status: 1 });
+// Compound index for frequent query pattern: filter by user + not-deleted
+userBioDataSchema.index({ user_id: 1, is_deleted: 1 });
 
 export default mongoose.model<IUserBioData>("UserBioData", userBioDataSchema);
