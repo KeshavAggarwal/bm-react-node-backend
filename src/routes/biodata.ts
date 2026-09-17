@@ -304,7 +304,7 @@ Router.get("/", authenticateFirebase, async (req: AuthenticatedRequest, res: Res
     }
 
     // Query MongoDB for user's biodata - only select specific fields
-    const biodataListRaw = await UserBioData.find({ user_id: userId })
+    const biodataListRaw = await UserBioData.find({ user_id: userId, is_deleted: { $ne: true } })
       .select('form_data template_id image_path created_on last_edit_at payment_status')
       .sort({ created_on: -1 }) // Sort by newest first
       .lean();
@@ -410,6 +410,7 @@ Router.post("/:id/edit", authenticateFirebase, async (req: AuthenticatedRequest,
     const biodata = await UserBioData.findOne({
       _id: biodataId,
       user_id: userId,
+      is_deleted: { $ne: true },
     });
 
     if (!biodata) {
@@ -513,9 +514,10 @@ Router.get("/:id", authenticateFirebase, async (req: AuthenticatedRequest, res: 
     }
 
     // Query MongoDB for specific biodata that belongs to the user - only select specific fields
-    const biodata = await UserBioData.findOne({ 
-      _id: biodataId, 
-      user_id: userId 
+    const biodata = await UserBioData.findOne({
+      _id: biodataId,
+      user_id: userId,
+      is_deleted: { $ne: true },
     })
       .select('form_data form_data_editable template_id image_path created_on payment_status')
       .lean();
@@ -560,6 +562,78 @@ Router.get("/:id", authenticateFirebase, async (req: AuthenticatedRequest, res: 
       data: null,
       error: {
         message: `Failed to fetch biodata: ${error.message}`,
+        code: 500,
+      },
+    };
+    res.status(500).json(response);
+  }
+});
+
+// DELETE /biodata/:id - Soft delete a biodata entry for the authenticated user
+Router.delete("/:id", authenticateFirebase, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user?.uid;
+    const biodataId = req.params.id;
+
+    if (!userId) {
+      const response: BaseResponse<null> = {
+        status: false,
+        data: null,
+        error: {
+          message: "User ID not found in token",
+          code: 400,
+        },
+      };
+      return res.status(400).json(response);
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(biodataId)) {
+      const response: BaseResponse<null> = {
+        status: false,
+        data: null,
+        error: {
+          message: "Invalid ID format",
+          code: 400,
+        },
+      };
+      return res.status(400).json(response);
+    }
+
+    const biodata = await UserBioData.findOne({
+      _id: biodataId,
+      user_id: userId,
+      is_deleted: { $ne: true },
+    });
+
+    if (!biodata) {
+      const response: BaseResponse<null> = {
+        status: false,
+        data: null,
+        error: {
+          message: "Biodata not found or you don't have access to it",
+          code: 404,
+        },
+      };
+      return res.status(404).json(response);
+    }
+
+    biodata.is_deleted = true;
+    biodata.deleted_on = getISTDate();
+    await biodata.save();
+
+    const response: BaseResponse<{ message: string }> = {
+      status: true,
+      data: { message: "Biodata deleted successfully" },
+      error: null,
+    };
+    res.json(response);
+  } catch (error: any) {
+    console.error("Error deleting biodata:", error);
+    const response: BaseResponse<null> = {
+      status: false,
+      data: null,
+      error: {
+        message: `Failed to delete biodata: ${error.message}`,
         code: 500,
       },
     };
