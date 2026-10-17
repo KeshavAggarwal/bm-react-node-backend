@@ -217,7 +217,7 @@ const userBioDataSchema = new Schema<IUserBioData>({
   deletion_source: {
     type: String,
     enum: ["account", "biodata"],
-    default: null,
+    required: false,
   },
 });
 
