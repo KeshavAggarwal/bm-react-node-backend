@@ -48,6 +48,7 @@ export interface IUserBioData extends Document {
   }>;
   is_deleted: boolean;
   deleted_on: Date | null;
+  deletion_source: "account" | "biodata" | null;
 }
 
 const userBioDataSchema = new Schema<IUserBioData>({
@@ -211,6 +212,11 @@ const userBioDataSchema = new Schema<IUserBioData>({
   },
   deleted_on: {
     type: Date,
+    default: null,
+  },
+  deletion_source: {
+    type: String,
+    enum: ["account", "biodata"],
     default: null,
   },
 });

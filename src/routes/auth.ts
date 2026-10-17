@@ -3,7 +3,14 @@ import axios from "axios";
 import rateLimit from "express-rate-limit";
 import admin from "../firebaseAdmin";
 import { BaseResponse } from "../types/response";
-import { apiKeyGuard, logRequestIp } from "../middleware/authMiddleware";
+import {
+  apiKeyGuard,
+  logRequestIp,
+  authenticateFirebase,
+  AuthenticatedRequest,
+} from "../middleware/authMiddleware";
+import UserBioData from "../models/userBioData";
+import { getISTDate } from "../helpers";
 
 const Router = express.Router();
 
@@ -254,6 +261,73 @@ Router.post(
         data: null,
         error: {
           message: "Failed to verify OTP. Please try again.",
+          code: 500,
+        },
+      };
+      return res.status(500).json(response);
+    }
+  },
+);
+
+// DELETE /auth/account — soft-delete all biodata, then remove Firebase user
+Router.delete(
+  "/account",
+  authenticateFirebase,
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const userId = req.user?.uid;
+
+      if (!userId) {
+        const response: BaseResponse<null> = {
+          status: false,
+          data: null,
+          error: { message: "User ID not found in token", code: 400 },
+        };
+        return res.status(400).json(response);
+      }
+
+      const deletedOn = getISTDate();
+      await UserBioData.updateMany(
+        { user_id: userId },
+        {
+          $set: {
+            is_deleted: true,
+            deleted_on: deletedOn,
+            deletion_source: "account",
+          },
+        },
+      );
+
+      try {
+        await admin.auth().deleteUser(userId);
+      } catch (error: any) {
+        if (error?.code !== "auth/user-not-found") {
+          console.error("deleteUser error:", error);
+          const response: BaseResponse<null> = {
+            status: false,
+            data: null,
+            error: {
+              message: "Failed to delete account. Please try again.",
+              code: 500,
+            },
+          };
+          return res.status(500).json(response);
+        }
+      }
+
+      const response: BaseResponse<{ message: string }> = {
+        status: true,
+        data: { message: "Account deleted successfully" },
+        error: null,
+      };
+      return res.status(200).json(response);
+    } catch (error: any) {
+      console.error("delete-account error:", error?.message ?? error);
+      const response: BaseResponse<null> = {
+        status: false,
+        data: null,
+        error: {
+          message: "Failed to delete account. Please try again.",
           code: 500,
         },
       };
