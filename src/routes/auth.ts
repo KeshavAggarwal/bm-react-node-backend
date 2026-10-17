@@ -285,7 +285,10 @@ Router.post(
 Router.delete(
   "/account",
   authenticateFirebase,
+<<<<<<< HEAD
   deleteAccountIpLimiter,
+=======
+>>>>>>> main
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user?.uid;
