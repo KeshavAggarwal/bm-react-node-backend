@@ -83,6 +83,18 @@ const verifyOtpPhoneLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// delete-account: max 10 per IP per hour
+const deleteAccountIpLimiter = rateLimit({
+  windowMs: ONE_HOUR_MS,
+  limit: 10,
+  keyGenerator: (req) => req.ip ?? "unknown",
+  handler: rateLimitHandler(
+    "Too many account deletion attempts from this device.",
+  ),
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // POST /auth/send-otp
 // Accepts { phone: "9876543210" } — 10-digit Indian number, no country code
 Router.post(
@@ -273,6 +285,7 @@ Router.post(
 Router.delete(
   "/account",
   authenticateFirebase,
+  deleteAccountIpLimiter,
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user?.uid;
