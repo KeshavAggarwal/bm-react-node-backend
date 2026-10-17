@@ -619,6 +619,7 @@ Router.delete("/:id", authenticateFirebase, async (req: AuthenticatedRequest, re
 
     biodata.is_deleted = true;
     biodata.deleted_on = getISTDate();
+    biodata.deletion_source = "biodata";
     await biodata.save();
 
     const response: BaseResponse<{ message: string }> = {
