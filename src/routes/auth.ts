@@ -17,10 +17,6 @@ const Router = express.Router();
 const MSG91_AUTH_KEY = process.env.MSG91_AUTH_KEY as string;
 const MSG91_TEMPLATE_ID = process.env.MSG91_TEMPLATE_ID as string;
 
-// Whitelisted phone numbers skip MSG91 and always verify with a constant OTP
-const WHITELISTED_PHONES = ["9217001209"];
-const WHITELIST_OTP = "123456";
-
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
 function rateLimitHandler(message: string) {
@@ -99,36 +95,6 @@ const deleteAccountIpLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-async function signInWithPhone(phone: string, res: Response) {
-  // OTP is valid — resolve or create Firebase user
-  const phoneNumber = `+91${phone}`;
-  let user: admin.auth.UserRecord;
-  let isNewUser = false;
-
-  try {
-    user = await admin.auth().getUserByPhoneNumber(phoneNumber);
-  } catch (fetchError: any) {
-    if (fetchError.code === "auth/user-not-found") {
-      user = await admin.auth().createUser({ phoneNumber });
-      isNewUser = true;
-    } else {
-      throw fetchError;
-    }
-  }
-
-  const customToken = await admin.auth().createCustomToken(user.uid);
-
-  const response: BaseResponse<{
-    customToken: string;
-    isNewUser: boolean;
-  }> = {
-    status: true,
-    data: { customToken, isNewUser },
-    error: null,
-  };
-  return res.status(200).json(response);
-}
-
 // POST /auth/send-otp
 // Accepts { phone: "9876543210" } — 10-digit Indian number, no country code
 Router.post(
@@ -151,10 +117,6 @@ Router.post(
           },
         };
         return res.status(400).json(response);
-      }
-
-      if (WHITELISTED_PHONES.includes(phone)) {
-        return res.status(200).json({ status: true, data: null, error: null });
       }
 
       const mobile = `91${phone}`;
@@ -231,17 +193,6 @@ Router.post(
         return res.status(400).json(response);
       }
 
-      if (WHITELISTED_PHONES.includes(phone)) {
-        if (String(otp) !== WHITELIST_OTP) {
-          return res.status(400).json({
-            status: false,
-            data: null,
-            error: { message: "Invalid OTP", code: 400 },
-          });
-        }
-        return await signInWithPhone(phone, res);
-      }
-
       const mobile = `91${phone}`;
 
       // Verify OTP with MSG91
@@ -288,7 +239,33 @@ Router.post(
         return res.status(400).json(response);
       }
 
-      return await signInWithPhone(phone, res);
+      // OTP is valid — resolve or create Firebase user
+      const phoneNumber = `+91${phone}`;
+      let user: admin.auth.UserRecord;
+      let isNewUser = false;
+
+      try {
+        user = await admin.auth().getUserByPhoneNumber(phoneNumber);
+      } catch (fetchError: any) {
+        if (fetchError.code === "auth/user-not-found") {
+          user = await admin.auth().createUser({ phoneNumber });
+          isNewUser = true;
+        } else {
+          throw fetchError;
+        }
+      }
+
+      const customToken = await admin.auth().createCustomToken(user.uid);
+
+      const response: BaseResponse<{
+        customToken: string;
+        isNewUser: boolean;
+      }> = {
+        status: true,
+        data: { customToken, isNewUser },
+        error: null,
+      };
+      return res.status(200).json(response);
     } catch (error: any) {
       console.error("verify-otp error:", error.message);
       const response: BaseResponse<null> = {
