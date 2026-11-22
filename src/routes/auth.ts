@@ -257,7 +257,7 @@ Router.post(
       await User.findOneAndUpdate(
         { firebase_uid: user.uid },
         {
-          $set: { phone, channel, updated_on: getISTDate() },
+          $set: { phone, updated_on: getISTDate() },
         },
         { upsert: true },
       );
