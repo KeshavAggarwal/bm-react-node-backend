@@ -208,4 +208,10 @@ const userBioDataSchema = new Schema<IUserBioData>({
 // Compound index for frequent query pattern: filter by user + payment status
 userBioDataSchema.index({ user_id: 1, payment_status: 1 });
 
+// user_id_1 already exists in the DB — no need to declare it here.
+// user_id_1_payment_status_1 compound index also already exists in the DB.
+
+// Index for notification cron: UNPAID_PREVIEW / UNPAID_REMINDER created_on window queries
+userBioDataSchema.index({ created_on: 1 });
+
 export default mongoose.model<IUserBioData>("UserBioData", userBioDataSchema);

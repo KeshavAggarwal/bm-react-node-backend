@@ -4,9 +4,10 @@ import { getISTDate } from "../helpers";
 export interface IUser extends Document {
   firebase_uid: string;
   phone: string | null;
-  fcm_token: string | null;
+  email: string | null;
+  fcm_token_android: string | null;
+  fcm_token_ios: string | null;
   fcm_token_updated_on: Date | null;
-  channel: "ANDROID" | "IOS";
   created_on: Date;
   updated_on: Date;
 }
@@ -22,18 +23,24 @@ const userSchema = new Schema<IUser>(
       type: String,
       default: null,
     },
-    fcm_token: {
+    // Email is populated for Google-login users (Firebase ID token carries it)
+    email: {
+      type: String,
+      default: null,
+    },
+    // Per-platform FCM tokens — allows the same user to receive notifications
+    // on both Android and iOS simultaneously (e.g. same Google account on both)
+    fcm_token_android: {
+      type: String,
+      default: null,
+    },
+    fcm_token_ios: {
       type: String,
       default: null,
     },
     fcm_token_updated_on: {
       type: Date,
       default: null,
-    },
-    channel: {
-      type: String,
-      enum: ["ANDROID", "IOS"],
-      default: "ANDROID",
     },
     created_on: {
       type: Date,
@@ -49,5 +56,8 @@ const userSchema = new Schema<IUser>(
 
 // Unique index on firebase_uid (also declared via `unique: true` above; explicit index for clarity)
 userSchema.index({ firebase_uid: 1 }, { unique: true });
+
+// Index for notification cron: NO_BIODATA_NUDGE / NO_BIODATA_REMINDER created_on window queries
+userSchema.index({ created_on: 1 });
 
 export default mongoose.model<IUser>("User", userSchema);

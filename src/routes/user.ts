@@ -10,14 +10,22 @@ import { getISTDate } from "../helpers";
 const Router = express.Router();
 
 // PATCH /user/fcm-token
-// Updates fcm_token and channel for the authenticated user.
+// Updates (or creates) the FCM token for the authenticated user.
 // Body: { fcm_token: string, channel: "ANDROID" | "IOS" }
+//
+// Uses upsert so Google-login users (who have no prior User doc) are handled
+// automatically — no separate "create user" step needed after Google sign-in.
+//
+// Stores tokens per-platform so the same user logged into both iOS and Android
+// receives notifications on both devices simultaneously.
 Router.patch(
   "/fcm-token",
   authenticateFirebase,
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const firebaseUid = req.user?.uid;
+      // Firebase ID token carries email for Google users
+      const email = (req.user as any)?.email ?? null;
 
       if (!firebaseUid) {
         const response: BaseResponse<null> = {
@@ -40,7 +48,6 @@ Router.patch(
       }
 
       const VALID_CHANNELS = ["ANDROID", "IOS"] as const;
-
       if (!channel || !VALID_CHANNELS.includes(channel)) {
         const response: BaseResponse<null> = {
           status: false,
@@ -52,27 +59,30 @@ Router.patch(
 
       const nowIST = getISTDate();
 
-      const updated = await User.findOneAndUpdate(
+      // Map channel → the correct per-platform field
+      const tokenField =
+        channel === "ANDROID" ? "fcm_token_android" : "fcm_token_ios";
+
+      await User.findOneAndUpdate(
         { firebase_uid: firebaseUid },
         {
           $set: {
-            fcm_token,
-            channel,
+            [tokenField]: fcm_token,
             fcm_token_updated_on: nowIST,
             updated_on: nowIST,
+            // Persist email for Google users (safe no-op for phone users)
+            ...(email ? { email } : {}),
+          },
+          // $setOnInsert only runs when creating a NEW doc via upsert.
+          // This handles Google-login users who never went through verify-otp.
+          $setOnInsert: {
+            firebase_uid: firebaseUid,
+            phone: null,
+            created_on: nowIST,
           },
         },
-        { new: true },
+        { upsert: true, new: true },
       );
-
-      if (!updated) {
-        const response: BaseResponse<null> = {
-          status: false,
-          data: null,
-          error: { message: "User not found", code: 404 },
-        };
-        return res.status(404).json(response);
-      }
 
       const response: BaseResponse<null> = {
         status: true,
