@@ -9,10 +9,10 @@ import { getISTDate } from "../helpers";
 // ─── trigger IDs ──────────────────────────────────────────────────────────────
 
 const TRIGGER_ID = {
-  NO_BIODATA_NUDGE: "NO_BIODATA_NUDGE",
-  NO_BIODATA_REMINDER: "NO_BIODATA_REMINDER",
-  UNPAID_PREVIEW: "UNPAID_PREVIEW",
-  UNPAID_REMINDER: "UNPAID_REMINDER",
+  NO_BIODATA_NUDGE: "NO_BIODATA_NUDGE",     // signed up 2–14h ago,  no biodata created
+  NO_BIODATA_REMINDER: "NO_BIODATA_REMINDER", // signed up 24–36h ago, no biodata created
+  UNPAID_PREVIEW: "UNPAID_PREVIEW",           // biodata created 1–13h ago,  payment pending
+  UNPAID_REMINDER: "UNPAID_REMINDER",         // biodata created 24–36h ago, payment pending
 } as const;
 type TriggerID = (typeof TRIGGER_ID)[keyof typeof TRIGGER_ID];
 
