@@ -46,6 +46,9 @@ export interface IUserBioData extends Document {
     attempted_at: Date;
     template_id: string;
   }>;
+  is_deleted: boolean;
+  deleted_on: Date | null;
+  deletion_source: "account" | "biodata" | null;
 }
 
 const userBioDataSchema = new Schema<IUserBioData>({
@@ -203,10 +206,25 @@ const userBioDataSchema = new Schema<IUserBioData>({
     required: false,
     default: "WEB",
   },
+  is_deleted: {
+    type: Boolean,
+    default: false,
+  },
+  deleted_on: {
+    type: Date,
+    default: null,
+  },
+  deletion_source: {
+    type: String,
+    enum: ["account", "biodata"],
+    required: false,
+  },
 });
 
 // Compound index for frequent query pattern: filter by user + payment status
 userBioDataSchema.index({ user_id: 1, payment_status: 1 });
+// Compound index for frequent query pattern: filter by user + not-deleted
+userBioDataSchema.index({ user_id: 1, is_deleted: 1 });
 
 // user_id_1 already exists in the DB — no need to declare it here.
 // user_id_1_payment_status_1 compound index also already exists in the DB.

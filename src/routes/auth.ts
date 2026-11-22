@@ -3,14 +3,24 @@ import axios from "axios";
 import rateLimit from "express-rate-limit";
 import admin from "../firebaseAdmin";
 import { BaseResponse } from "../types/response";
-import { apiKeyGuard, logRequestIp } from "../middleware/authMiddleware";
+import {
+  apiKeyGuard,
+  logRequestIp,
+  authenticateFirebase,
+  AuthenticatedRequest,
+} from "../middleware/authMiddleware";
 import User from "../models/user";
+import UserBioData from "../models/userBioData";
 import { getISTDate } from "../helpers";
 
 const Router = express.Router();
 
 const MSG91_AUTH_KEY = process.env.MSG91_AUTH_KEY as string;
 const MSG91_TEMPLATE_ID = process.env.MSG91_TEMPLATE_ID as string;
+
+// Whitelisted phone numbers skip MSG91 and always verify with a constant OTP
+const WHITELISTED_PHONES = ["9217001209"];
+const WHITELIST_OTP = "123456";
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
@@ -78,6 +88,48 @@ const verifyOtpPhoneLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// delete-account: max 10 per IP per hour
+const deleteAccountIpLimiter = rateLimit({
+  windowMs: ONE_HOUR_MS,
+  limit: 10,
+  keyGenerator: (req) => req.ip ?? "unknown",
+  handler: rateLimitHandler(
+    "Too many account deletion attempts from this device.",
+  ),
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+async function signInWithPhone(phone: string, res: Response) {
+  // OTP is valid — resolve or create Firebase user
+  const phoneNumber = `+91${phone}`;
+  let user: admin.auth.UserRecord;
+  let isNewUser = false;
+
+  try {
+    user = await admin.auth().getUserByPhoneNumber(phoneNumber);
+  } catch (fetchError: any) {
+    if (fetchError.code === "auth/user-not-found") {
+      user = await admin.auth().createUser({ phoneNumber });
+      isNewUser = true;
+    } else {
+      throw fetchError;
+    }
+  }
+
+  const customToken = await admin.auth().createCustomToken(user.uid);
+
+  const response: BaseResponse<{
+    customToken: string;
+    isNewUser: boolean;
+  }> = {
+    status: true,
+    data: { customToken, isNewUser },
+    error: null,
+  };
+  return res.status(200).json(response);
+}
+
 // POST /auth/send-otp
 // Accepts { phone: "9876543210" } — 10-digit Indian number, no country code
 Router.post(
@@ -100,6 +152,10 @@ Router.post(
           },
         };
         return res.status(400).json(response);
+      }
+
+      if (WHITELISTED_PHONES.includes(phone)) {
+        return res.status(200).json({ status: true, data: null, error: null });
       }
 
       const mobile = `91${phone}`;
@@ -174,6 +230,17 @@ Router.post(
           },
         };
         return res.status(400).json(response);
+      }
+
+      if (WHITELISTED_PHONES.includes(phone)) {
+        if (String(otp) !== WHITELIST_OTP) {
+          return res.status(400).json({
+            status: false,
+            data: null,
+            error: { message: "Invalid OTP", code: 400 },
+          });
+        }
+        return await signInWithPhone(phone, res);
       }
 
       const mobile = `91${phone}`;
@@ -265,6 +332,74 @@ Router.post(
         data: null,
         error: {
           message: "Failed to verify OTP. Please try again.",
+          code: 500,
+        },
+      };
+      return res.status(500).json(response);
+    }
+  },
+);
+
+// DELETE /auth/account — soft-delete all biodata, then remove Firebase user
+Router.delete(
+  "/account",
+  authenticateFirebase,
+  deleteAccountIpLimiter,
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const userId = req.user?.uid;
+
+      if (!userId) {
+        const response: BaseResponse<null> = {
+          status: false,
+          data: null,
+          error: { message: "User ID not found in token", code: 400 },
+        };
+        return res.status(400).json(response);
+      }
+
+      const deletedOn = getISTDate();
+      await UserBioData.updateMany(
+        { user_id: userId },
+        {
+          $set: {
+            is_deleted: true,
+            deleted_on: deletedOn,
+            deletion_source: "account",
+          },
+        },
+      );
+
+      try {
+        await admin.auth().deleteUser(userId);
+      } catch (error: any) {
+        if (error?.code !== "auth/user-not-found") {
+          console.error("deleteUser error:", error);
+          const response: BaseResponse<null> = {
+            status: false,
+            data: null,
+            error: {
+              message: "Failed to delete account. Please try again.",
+              code: 500,
+            },
+          };
+          return res.status(500).json(response);
+        }
+      }
+
+      const response: BaseResponse<{ message: string }> = {
+        status: true,
+        data: { message: "Account deleted successfully" },
+        error: null,
+      };
+      return res.status(200).json(response);
+    } catch (error: any) {
+      console.error("delete-account error:", error?.message ?? error);
+      const response: BaseResponse<null> = {
+        status: false,
+        data: null,
+        error: {
+          message: "Failed to delete account. Please try again.",
           code: 500,
         },
       };
