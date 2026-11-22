@@ -119,6 +119,15 @@ async function signInWithPhone(phone: string, res: Response) {
 
   const customToken = await admin.auth().createCustomToken(user.uid);
 
+  // Upsert the users document
+  await User.findOneAndUpdate(
+    { firebase_uid: user.uid },
+    {
+      $set: { phone, updated_on: getISTDate() },
+    },
+    { upsert: true },
+  );
+
   const response: BaseResponse<{
     customToken: string;
     isNewUser: boolean;
@@ -289,42 +298,7 @@ Router.post(
         return res.status(400).json(response);
       }
 
-      // OTP is valid — resolve or create Firebase user
-      const phoneNumber = `+91${phone}`;
-      let user: admin.auth.UserRecord;
-      let isNewUser = false;
-
-      try {
-        user = await admin.auth().getUserByPhoneNumber(phoneNumber);
-      } catch (fetchError: any) {
-        if (fetchError.code === "auth/user-not-found") {
-          user = await admin.auth().createUser({ phoneNumber });
-          isNewUser = true;
-        } else {
-          throw fetchError;
-        }
-      }
-
-      const customToken = await admin.auth().createCustomToken(user.uid);
-
-      // Upsert the users document
-      await User.findOneAndUpdate(
-        { firebase_uid: user.uid },
-        {
-          $set: { phone, updated_on: getISTDate() },
-        },
-        { upsert: true },
-      );
-
-      const response: BaseResponse<{
-        customToken: string;
-        isNewUser: boolean;
-      }> = {
-        status: true,
-        data: { customToken, isNewUser },
-        error: null,
-      };
-      return res.status(200).json(response);
+      return await signInWithPhone(phone, res);
     } catch (error: any) {
       console.error("verify-otp error:", error.message);
       const response: BaseResponse<null> = {
