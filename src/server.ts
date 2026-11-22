@@ -8,6 +8,7 @@ import mongoose from "mongoose";
 import bodyParser from "body-parser";
 import cors from "cors";
 import { Router as allRoutes } from "./routes/index";
+import { startNotificationCron } from "./crons/notificationCron";
 const app = express();
 
 // so that nginx can forward the real client IP in req.ip instead of localhost
@@ -57,6 +58,7 @@ app.use(function (err: any, req: Request, res: Response, next: NextFunction) {
   });
 });
 
-app.listen(PORT, () =>
-  console.log(`🚀 Server is listening on port ${PORT}...`),
-);
+app.listen(PORT, () => {
+  console.log(`🚀 Server is listening on port ${PORT}...`);
+  startNotificationCron();
+});

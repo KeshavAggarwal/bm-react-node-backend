@@ -9,6 +9,7 @@ import {
   authenticateFirebase,
   AuthenticatedRequest,
 } from "../middleware/authMiddleware";
+import User from "../models/user";
 import UserBioData from "../models/userBioData";
 import { getISTDate } from "../helpers";
 
@@ -117,6 +118,15 @@ async function signInWithPhone(phone: string, res: Response) {
   }
 
   const customToken = await admin.auth().createCustomToken(user.uid);
+
+  // Upsert the users document
+  await User.findOneAndUpdate(
+    { firebase_uid: user.uid },
+    {
+      $set: { phone, updated_on: getISTDate() },
+    },
+    { upsert: true },
+  );
 
   const response: BaseResponse<{
     customToken: string;
