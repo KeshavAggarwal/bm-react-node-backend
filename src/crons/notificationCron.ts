@@ -20,20 +20,20 @@ type TriggerID = (typeof TRIGGER_ID)[keyof typeof TRIGGER_ID];
 
 const COPY: Record<TriggerID, { title: string; body: string }> = {
   NO_BIODATA_NUDGE: {
-    title: "Need a marriage biodata urgently? ⏱️",
-    body: "Skip the Word formatting hassle. Choose a template, add your details, and get a clean PDF in 5 mins.",
+    title: "Family asking for biodata? 💍",
+    body: "Create it under 5 mins and share with them",
   },
   NO_BIODATA_REMINDER: {
-    title: "Still struggling with Word formatting? 📄",
-    body: "Create a beautiful, traditional or modern marriage biodata easily. Trusted by 1.5L+ users.",
+    title: "Struggling with biodata? 🤔",
+    body: "Just add your details, choose a template and done!",
   },
   UNPAID_PREVIEW: {
-    title: "Your biodata is ready to preview 👀",
-    body: "Review your details, finalize your template, and share your biodata in PDF.",
+    title: "See how your biodata looks ✨",
+    body: "Check your details in preview and download",
   },
   UNPAID_REMINDER: {
-    title: "Your saved biodata is ready 📲",
-    body: "Your biodata is formatted and ready. Download your PDF to easily share with families.",
+    title: "Your biodata is ready ✅",
+    body: "Download your PDF and share it with family",
   },
 };
 
